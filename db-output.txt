@@ -1,0 +1,50 @@
+﻿=== USUARIOS ===
+[
+  {
+    id: 'cmj3rykcr00005ajwgf8ye1ya',
+    email: 'john@doe.com',
+    password: '$2a$10$j9aE4nh3cUcQuwoeuO6hL.No4Yx/.RPCwlUkZ/ZmF/pKAgGeofN.u',
+    name: 'John Doe',
+    emailVerified: null,
+    image: null,
+    createdAt: 2025-12-13T04:07:15.327Z
+  },
+  {
+    id: 'cmj3s11ls00005aug8g97dgvy',
+    email: 'eddyflores100@gmail.com',
+    password: '$2a$10$3osubTOlmFFRafBGvkoVDuuxVVZxRB2xylQQ/cbRQs0W1lbVjSN8.',
+    name: 'Edison',
+    emailVerified: null,
+    image: null,
+    createdAt: 2025-12-13T04:09:11.008Z
+  },
+  {
+    id: 'cmj4wakut00005a44fwc80tbg',
+    email: 'edgar.flores.guerra.2011@gmail.com',
+    password: '$2a$10$V9rlD2/6VpKCinn5aJ5UBeZVtEWAaw1LfF/pMslUDgHx67KlBGjm.',
+    name: 'Edison',
+    emailVerified: null,
+    image: null,
+    createdAt: 2025-12-13T22:56:20.501Z
+  }
+]
+
+=== PROVEEDORES API ===
+Total de proveedores configurados: 14
+- openrouter (text_generation) - Activo: true
+- google (text_generation) - Activo: true
+- huggingface (image_generation) - Activo: true
+- openrouter (text_generation) - Activo: true
+- huggingface (text_generation) - Activo: true
+- replicate (text_generation) - Activo: true
+- openai (text_generation) - Activo: true
+- anthropic (text_generation) - Activo: true
+- google (text_generation) - Activo: true
+- mistral (text_generation) - Activo: true
+- cohere (text_generation) - Activo: true
+- groq (text_generation) - Activo: true
+- deepseek (text_generation) - Activo: true
+- ai21 (text_generation) - Activo: true
+
+=== LIBROS ===
+Total de libros: 4

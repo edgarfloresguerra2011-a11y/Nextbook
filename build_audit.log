@@ -1,0 +1,56 @@
+﻿
+> app@2.8.0 build
+> next build
+
+  Ôû▓ Next.js 14.2.28
+  - Environments: .env
+
+   Creating an optimized production build ...
+ Ô£ô Compiled successfully
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+   Generating static pages (0/15) ...
+   Generating static pages (3/15) 
+   Generating static pages (7/15) 
+   Generating static pages (11/15) 
+ Ô£ô Generating static pages (15/15)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+Ôöî ãÆ /                                    175 B          96.1 kB
+Ôö£ ãÆ /_not-found                          873 B          88.1 kB
+Ôö£ ãÆ /api/auth/[...nextauth]              0 B                0 B
+Ôö£ ãÆ /api/autopilot                       0 B                0 B
+Ôö£ ãÆ /api/books/[id]                      0 B                0 B
+Ôö£ ãÆ /api/books/[id]/copywriting          0 B                0 B
+Ôö£ ãÆ /api/books/[id]/docx                 0 B                0 B
+Ôö£ ãÆ /api/books/[id]/epub                 0 B                0 B
+Ôö£ ãÆ /api/books/[id]/mockups              0 B                0 B
+Ôö£ ãÆ /api/books/[id]/pdf                  0 B                0 B
+Ôö£ ãÆ /api/chapters/[id]                   0 B                0 B
+Ôö£ ãÆ /api/chapters/[id]/regenerate-image  0 B                0 B
+Ôö£ ãÆ /api/debug/upgrade                   0 B                0 B
+Ôö£ ãÆ /api/generate                        0 B                0 B
+Ôö£ ãÆ /api/generate/rewrite                0 B                0 B
+Ôö£ ãÆ /api/providers                       0 B                0 B
+Ôö£ ãÆ /api/providers/[id]                  0 B                0 B
+Ôö£ ãÆ /api/signup                          0 B                0 B
+Ôö£ ãÆ /api/users/me                        0 B                0 B
+Ôö£ ãÆ /api/users/me/preferences            0 B                0 B
+Ôö£ ãÆ /auth/login                          2.9 kB          124 kB
+Ôö£ ãÆ /auth/signup                         3.07 kB         125 kB
+Ôö£ ãÆ /books/[id]                          8.05 kB         156 kB
+Ôö£ ãÆ /books/[id]/export                   13.9 kB         145 kB
+Ôö£ ãÆ /dashboard                           11.5 kB         153 kB
+Ôö£ ãÆ /generator                           5.46 kB         142 kB
+Ôöö ãÆ /settings                            19.7 kB         173 kB
++ First Load JS shared by all            87.2 kB
+  Ôö£ chunks/117-c3d3dc8c766243ed.js       31.6 kB
+  Ôö£ chunks/fd9d1056-b6bd4111191f2b98.js  53.6 kB
+  Ôöö other shared chunks (total)          2 kB
+
+
+ãÆ  (Dynamic)  server-rendered on demand
+

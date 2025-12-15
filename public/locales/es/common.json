@@ -1,0 +1,34 @@
+{
+  "dashboard": "Panel de Control",
+  "my_books": "Mis Libros",
+  "create_new": "Nuevo Libro",
+  "settings": "Ajustes",
+  "language": "Idioma",
+  "profile": "Perfil",
+  "logout": "Cerrar Sesión",
+  "welcome": "Bienvenido a Nexbook",
+  "autopilot": "Autocalot",
+  "export": "Exportar",
+  "read": "Leer",
+  "edit": "Editar",
+  "save": "Guardar",
+  "cancel": "Cancelar",
+  "delete": "Eliminar",
+  "language_selector": {
+    "label": "Selecciona tu idioma",
+    "es": "Español",
+    "en": "English",
+    "pt": "Português",
+    "fr": "Français",
+    "de": "Deutsch",
+    "it": "Italiano",
+    "ja": "日本語",
+    "zh": "中文"
+  },
+  "settings": {
+    "title": "Configuración",
+    "language_desc": "Cambia el idioma de la interfaz",
+    "theme_desc": "Personaliza la apariencia (Próximamente)",
+    "language_updated": "Idioma actualizado / Language updated"
+  }
+}
