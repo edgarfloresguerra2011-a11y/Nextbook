@@ -1,19 +1,25 @@
-
+// Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp } from "firebase/app";
-// Data & Auth likely handled by Prisma/NextAuth in this app, but adding for future use if needed
-// import { getAnalytics } from "firebase/analytics"; 
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+  apiKey: "AIzaSyCVzcazffHHKArujdQSDXDlCUbK_3dIJtM",
+  authDomain: "ebboka-53259604-4480e.firebaseapp.com",
+  projectId: "ebboka-53259604-4480e",
+  storageBucket: "ebboka-53259604-4480e.firebasestorage.app",
+  messagingSenderId: "243362733032",
+  appId: "1:243362733032:web:afcb4b64179c9c8f0c225d"
 };
 
 // Initialize Firebase
-// Use getApps to avoid initializing twice in Next.js hot reload / SSR context
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+// Use existing app if initialized, otherwise create new one (prevents reload errors)
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-export { app };
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+export { app, auth, db, storage };

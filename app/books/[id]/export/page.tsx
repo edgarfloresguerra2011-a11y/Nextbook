@@ -47,5 +47,17 @@ export default async function ExportPage({ params }: ExportPageProps) {
   // We pass hasActiveSubscription derived from planType != 'free'
   const hasActiveSubscription = user?.planType !== 'free'
 
-  return <ExportClient book={book} hasActiveSubscription={hasActiveSubscription} />
+  // Serialize book to avoid "Date object not supported" error in Client Component
+  const serializedBook = {
+    ...book,
+    createdAt: book.createdAt.toISOString(),
+    updatedAt: book.updatedAt.toISOString(),
+    chapters: book.chapters.map(c => ({
+      ...c,
+      createdAt: c.createdAt.toISOString()
+    }))
+  }
+
+  // Cast back to any to satisfy the strict interface or update interface in client
+  return <ExportClient book={serializedBook as any} hasActiveSubscription={hasActiveSubscription} />
 }
