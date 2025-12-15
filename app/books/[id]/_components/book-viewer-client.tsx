@@ -427,28 +427,31 @@ function ChapterRenderer({ chapter, theme, layoutMode, regeneratingImageId, setR
                )}
 
                {/* Content Area */}
-               <div className={containerClass}>
-                   <div className={`prose ${theme.proseSize || 'prose-lg'} max-w-none ${theme.textColor} ${theme.font}`}>
+               <div className={containerClass + " text-justify"}>
+                   <div className={`prose ${theme.proseSize || 'prose-lg'} max-w-none ${theme.textColor} ${theme.font} text-justify`}>
                        {lines.map((line: string, idx: number) => {
-                           // Clean H2
-                           if (line.startsWith('## ')) {
-                               return <h3 key={idx} className={`text-2xl font-bold mt-8 mb-4 ${theme.headerText} break-inside-avoid-column border-b border-gray-100 pb-2`}>{line.replace('## ', '')}</h3>
+                           // Clean Text Function inside render
+                           const cleanLine = line.replace(/\*\*/g, '').replace(/###/g, '').replace(/^#+\s/, '');
+                           
+                           // Clean H2/H3 detected manually or by markdown structure
+                           if (line.startsWith('## ') || line.startsWith('### ')) {
+                               return <h3 key={idx} className={`text-2xl font-bold mt-8 mb-4 ${theme.headerText} break-inside-avoid-column border-b border-gray-100 pb-2`}>{cleanLine}</h3>
                            }
 
                            // Dropcap Logic (Only for first para in fancy layouts)
-                           if (line.trim().length > 0 && idx === 0 && (isMagazine || isNewspaper || isEditorial) && !line.startsWith('#')) {
+                           if (cleanLine.trim().length > 0 && idx === 0 && (isMagazine || isNewspaper || isEditorial)) {
                                return (
-                                   <div key={idx} className={`mb-6 first-letter:float-left first-letter:text-6xl first-letter:pr-3 first-letter:font-black first-letter:${theme.accentColor} first-letter:leading-[0.8]`}>
-                                       {line}
+                                   <div key={idx} className={`mb-6 first-letter:float-left first-letter:text-6xl first-letter:pr-3 first-letter:font-black first-letter:text-current first-letter:opacity-50 first-letter:leading-[0.8] text-justify`}>
+                                       {cleanLine}
                                    </div>
                                )
                            }
                            
-                           if(line.trim() === '') return <br key={idx} />
+                           if(cleanLine.trim() === '') return <br key={idx} />
 
                            return (
-                               <div key={idx} className="mb-4 outline-none empty:hidden" contentEditable suppressContentEditableWarning>
-                                  {line}
+                               <div key={idx} className="mb-4 outline-none empty:hidden text-justify w-full" contentEditable suppressContentEditableWarning>
+                                  {cleanLine}
                                </div>
                            )
                        })}
