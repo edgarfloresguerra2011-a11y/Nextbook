@@ -453,15 +453,9 @@ ${marketplace.price ? `Precio Sugerido: ${marketplace.price}` : ''}`
             </TabsTrigger>
             <TabsTrigger 
               value="kindle" 
-              className="px-4 py-2.5 text-sm data-[state=active]:bg-gray-100 data-[state=active]:text-gray-900 text-gray-500 rounded-md"
+              className="px-4 py-2.5 text-sm data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900 text-gray-500 rounded-md font-medium"
             >
-              <Eye className="mr-2 h-4 w-4" /> ¿Cómo se ve en Kindle?
-            </TabsTrigger>
-            <TabsTrigger 
-              value="mockups" 
-              className="px-4 py-2.5 text-sm data-[state=active]:bg-gray-100 data-[state=active]:text-gray-900 text-gray-500 rounded-md"
-            >
-              <Monitor className="mr-2 h-4 w-4" /> Mockups
+              <Monitor className="mr-2 h-4 w-4" /> Mockups & Preview
             </TabsTrigger>
           </TabsList>
 
@@ -758,99 +752,206 @@ ${marketplace.price ? `Precio Sugerido: ${marketplace.price}` : ''}`
           {/* ============================================ */}
           {/* TAB: KINDLE PREVIEW */}
           {/* ============================================ */}
-          <TabsContent value="kindle" className="m-0">
-             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-                <div className="bg-gray-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Monitor className="h-10 w-10 text-gray-400" />
+{/* ============================================ */}
+          {/* TAB: PREVIEW / MOCKUPS (Fusionado) */}
+          {/* ============================================ */}
+          <TabsContent value="kindle" className="m-0 space-y-6">
+             <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                   <h2 className="text-xl font-bold text-gray-900">Previsualización Multidispositivo</h2>
+                   <p className="text-gray-500 text-sm">Visualiza cómo verán tus lectores el libro en diferentes pantallas.</p>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Vista Previa Kindle</h3>
-                <p className="text-gray-500 max-w-md mx-auto mb-8">Esta función te permitirá previsualizar los saltos de página e imágenes tal como se verán en un dispositivo Kindle Paperwhite.</p>
-                <Badge variant="outline" className="text-xs">Próximamente en v3.0</Badge>
+                <Badge variant="secondary" className="w-fit">Actualizado: Preview v2.0</Badge>
              </div>
+             
+             {/* Device Preview Component */}
+             <DevicePreview book={book} />
           </TabsContent>
+
+          {/* ... (Other Tabs Content would follow if not replaced) ... */
+}
+
+function DevicePreview({ book }: { book: Book }) {
+   const [device, setDevice] = useState<'kindle' | 'phone' | 'tablet' | 'laptop'>('kindle')
+
+   return (
+      <div className="grid lg:grid-cols-12 gap-8">
+          {/* Controls */}
+          <div className="lg:col-span-3 space-y-2">
+              <button 
+                  onClick={() => setDevice('kindle')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-sm font-medium transition-all ${device === 'kindle' ? 'bg-black text-white border-black shadow-lg ring-2 ring-black/20' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+              >
+                  <BookOpen className="w-4 h-4" /> Kindle Paperwhite
+              </button>
+              <button 
+                  onClick={() => setDevice('phone')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-sm font-medium transition-all ${device === 'phone' ? 'bg-black text-white border-black shadow-lg ring-2 ring-black/20' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+              >
+                  <Zap className="w-4 h-4" /> Smartphone App
+              </button>
+              <button 
+                  onClick={() => setDevice('tablet')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-sm font-medium transition-all ${device === 'tablet' ? 'bg-black text-white border-black shadow-lg ring-2 ring-black/20' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+              >
+                  <Grid3X3 className="w-4 h-4" /> Tablet Reader
+              </button>
+               <button 
+                  onClick={() => setDevice('laptop')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-sm font-medium transition-all ${device === 'laptop' ? 'bg-black text-white border-black shadow-lg ring-2 ring-black/20' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+              >
+                  <Monitor className="w-4 h-4" /> Laptop Web Reader
+              </button>
+          </div>
+
+          {/* Canvas */}
+          <div className="lg:col-span-9 bg-gray-100 rounded-2xl flex items-center justify-center p-12 min-h-[600px] border border-gray-200 overflow-hidden relative">
+              <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] opacity-70"></div>
+              
+              {/* KINDLE MOCKUP */}
+              {device === 'kindle' && (
+                  <div className="relative w-[300px] h-[440px] bg-[#1a1a1a] rounded-[24px] p-4 shadow-2xl border-4 border-[#2a2a2a] flex flex-col ring-1 ring-white/10 animate-in zoom-in duration-300">
+                      <div className="h-full bg-[#f5f4e9] rounded-[4px] overflow-hidden grayscale relative group shadow-inner">
+                          {/* Screen Content */}
+                          <div className="p-6 h-full flex flex-col">
+                             <div className="flex justify-between text-[8px] text-gray-500 font-serif mb-4">
+                                <span>{book.title.substring(0, 15)}...</span>
+                                <span>Cap. 1</span>
+                             </div>
+                             <div className="flex-1 flex flex-col items-center justify-center text-center">
+                                {book.coverImageUrl && <img src={book.coverImageUrl} className="w-32 h-48 object-cover shadow-lg mb-4 mix-blend-multiply border border-black/10" />}
+                                <h2 className="font-serif font-bold text-lg leading-tight mb-2 text-black">{book.title}</h2>
+                                <p className="font-serif text-[10px] italic text-gray-800">{book.genre}</p>
+                             </div>
+                             <div className="text-[9px] text-gray-500 font-serif text-center mt-auto">Loc 345 • 45%</div>
+                          </div>
+                          {/* Glare definition for realism */}
+                          <div className="absolute top-0 right-0 w-full h-[200px] bg-gradient-to-b from-white/10 to-transparent pointer-events-none"></div>
+                      </div>
+                      <div className="h-8 flex items-center justify-center">
+                         <span className="text-[10px] text-gray-500 font-medium tracking-widest uppercase">Kindle</span>
+                      </div>
+                  </div>
+              )}
+
+              {/* PHONE MOCKUP */}
+              {device === 'phone' && (
+                  <div className="relative w-[280px] h-[580px] bg-black rounded-[40px] shadow-2xl border-[6px] border-[#333] ring-1 ring-white/10 overflow-hidden animate-in slide-in-from-bottom-10 duration-300">
+                      <div className="absolute top-0 w-full h-full bg-white flex flex-col">
+                          {/* Notch */}
+                          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[100px] h-[24px] bg-black rounded-b-[16px] z-20"></div>
+                          
+                          {/* App Header */}
+                          <div className="pt-10 pb-4 px-6 bg-white/90 backdrop-blur border-b flex justify-between items-center z-10 sticky top-0">
+                              <ArrowLeft className="w-4 h-4 text-gray-800" />
+                              <span className="text-xs font-bold uppercase tracking-wider">Nexbook</span>
+                              <Share2 className="w-4 h-4 text-gray-800" />
+                          </div>
+
+                          {/* App Content */}
+                          <div className="flex-1 overflow-y-auto no-scrollbar bg-white relative pb-8">
+                              <div className="h-[300px] w-full relative">
+                                 {book.coverImageUrl ? <img src={book.coverImageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-blue-100"/>}
+                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-6">
+                                     <h1 className="text-2xl font-bold text-white leading-tight drop-shadow-md">{book.title}</h1>
+                                 </div>
+                              </div>
+                              <div className="p-6 space-y-4">
+                                  <div className="flex items-center gap-2">
+                                     <Badge className="bg-blue-600 text-xs shadow-sm shadow-blue-200">Best Seller</Badge>
+                                     <span className="text-xs text-gray-500 font-medium">4.9 ★★★★★ (2.4k)</span>
+                                  </div>
+                                  <Button className="w-full rounded-full bg-black text-white text-xs h-10 font-bold shadow-lg shadow-black/20">Leer Gratis</Button>
+                                  <p className="text-xs text-gray-600 leading-relaxed text-justify">
+                                      {book.description || "Descubre una historia fascinante..."}
+                                  </p>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              )}
+        
+               {/* TABLET MOCKUP */}
+              {device === 'tablet' && (
+                  <div className="relative w-[500px] h-[360px] bg-black rounded-[24px] shadow-2xl border-[12px] border-black ring-1 ring-gray-800 flex overflow-hidden animate-in zoom-in-95 duration-300">
+                      <div className="flex-1 bg-white flex">
+                           {/* Sidebar */}
+                           <div className="w-[160px] bg-gray-50 border-r p-4 hidden sm:block">
+                               <div className="w-8 h-8 bg-purple-600 rounded-lg mb-6 shadow-md shadow-purple-200"></div>
+                               <div className="space-y-4">
+                                   <div className="h-2 w-20 bg-gray-200 rounded animate-pulse"></div>
+                                   <div className="h-2 w-16 bg-gray-200 rounded"></div>
+                                   <div className="h-2 w-24 bg-gray-200 rounded"></div>
+                               </div>
+                           </div>
+                           {/* Content */}
+                           <div className="flex-1 p-6 flex flex-col overflow-hidden">
+                                <h1 className="text-2xl font-black mb-4 text-gray-900">{book.title}</h1>
+                                <div className="flex gap-4">
+                                    <div className="w-32 aspect-[2/3] relative flex-shrink-0 shadow-xl transform -rotate-2 border border-gray-100 bg-white p-1">
+                                        {book.coverImageUrl && <img src={book.coverImageUrl} className="w-full h-full object-cover rounded-sm" />}
+                                    </div>
+                                    <div className="flex-1 space-y-3 pt-2">
+                                        <div className="h-2 w-full bg-gray-100 rounded"></div>
+                                        <div className="h-2 w-full bg-gray-100 rounded"></div>
+                                        <div className="h-2 w-3/4 bg-gray-100 rounded"></div>
+                                        <Button size="sm" className="mt-4 bg-black text-white hover:bg-gray-800 rounded-full text-xs box-content px-4">Comprar Ahora</Button>
+                                    </div>
+                                </div>
+                           </div>
+                      </div>
+                  </div>
+              )}
+
+              {/* LAPTOP MOCKUP */}
+              {device === 'laptop' && (
+                 <div className="relative w-[600px] aspect-[16/10] animate-in slide-in-from-bottom-5 duration-300">
+                     {/* Lid */}
+                     <div className="absolute inset-0 bg-[#1a1a1a] rounded-t-xl border-[8px] border-[#222] shadow-2xl flex flex-col overflow-hidden ring-1 ring-white/5">
+                         {/* Screen */}
+                         <div className="flex-1 bg-white relative overflow-hidden flex flex-col">
+                             {/* Browser Bar */}
+                             <div className="h-6 bg-gray-100 border-b flex items-center px-3 gap-1.5">
+                                 <div className="w-2 h-2 rounded-full bg-red-400"></div>
+                                 <div className="w-2 h-2 rounded-full bg-yellow-400"></div>
+                                 <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                                 <div className="ml-4 flex-1 h-4 bg-white rounded flex items-center px-2 shadow-sm">
+                                     <span className="text-[6px] text-gray-400">nexbook.app/reader/preview</span>
+                                 </div>
+                             </div>
+                             {/* Web Reader UI */}
+                             <div className="flex-1 flex bg-white font-sans text-gray-800">
+                                  <div className="w-[200px] border-r border-gray-100 p-6 flex flex-col items-center justify-center bg-gray-50/50">
+                                      {book.coverImageUrl && <img src={book.coverImageUrl} className="w-32 shadow-2xl rounded-sm mb-4 transform hover:scale-105 transition-transform duration-500" />}
+                                  </div>
+                                  <div className="flex-1 p-8 overflow-y-auto">
+                                      <h1 className="text-3xl font-bold mb-6 text-gray-900">{book.title}</h1>
+                                      <p className="text-sm leading-8 text-gray-600 font-serif text-justify max-w-lg">
+                                          {book.description}
+                                          <br/><br/>
+                                          <span className="opacity-50 blur-[2px] select-none">
+                                              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+                                          </span>
+                                      </p>
+                                  </div>
+                             </div>
+                         </div>
+                     </div>
+                     {/* Base */}
+                     <div className="absolute -bottom-4 left-0 right-0 h-4 bg-[#e2e2e2] rounded-b-xl shadow-xl transform scale-x-[1.1] z-[-1] flex justify-center border-t border-gray-300">
+                         <div className="w-32 h-2 bg-[#d1d1d1] rounded-b-md mt-0"></div>
+                     </div>
+                 </div>
+              )}
+          </div>
+      </div>
+   )
+}
 
           {/* ============================================ */}
           {/* TAB: MOCKUPS */}
           {/* ============================================ */}
-          <TabsContent value="mockups" className="m-0 space-y-6">
-            <div className="mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Generador de Mockups Publicitarios</h2>
-                <p className="text-gray-500 text-sm">Crea imágenes profesionales de tu libro para redes sociales y tiendas</p>
-            </div>
 
-            <div className="grid lg:grid-cols-12 gap-8">
-                {/* Left Column: Escenarios */}
-                <div className="lg:col-span-4 space-y-4">
-                    <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3">Elige un escenario:</h3>
-                    
-                    <div className="grid grid-cols-1 gap-3">
-                        {[
-                            { id: 'coffee', label: 'Mesa de Café', icon: Zap },
-                            { id: 'hands', label: 'En manos de una persona', icon: Zap },
-                            { id: 'library', label: 'Estantería de librería', icon: Zap },
-                            { id: 'tablet', label: 'Tablet y E-reader', icon: Monitor }
-                        ].map((scenario) => (
-                            <button
-                                key={scenario.id}
-                                className={`w-full text-left px-4 py-3 rounded-lg border transition-all duration-200 flex items-center justify-between group
-                                    ${activeTab === scenario.id // reusing var temporarily or define new state
-                                        ? 'border-purple-600 bg-purple-50 ring-1 ring-purple-600' 
-                                        : 'border-gray-200 bg-white hover:border-purple-200 hover:bg-gray-50'
-                                    }`}
-                                onClick={() => toast.info(`Generando escenario: ${scenario.label}...`)}
-                            >
-                                <span className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
-                                        <scenario.icon className="h-4 w-4" />
-                                    </div>
-                                    <span className="font-medium text-gray-700 group-hover:text-gray-900">{scenario.label}</span>
-                                </span>
-                                {false && <CheckCircle2 className="h-5 w-5 text-purple-600" />}
-                            </button>
-                        ))}
-                    </div>
-
-                     <div className="pt-4 border-t border-gray-100 mt-4">
-                        <Button className="w-full bg-gray-900 text-white hover:bg-gray-800">
-                            <Download className="mr-2 h-4 w-4" /> Descargar Pack Completo
-                        </Button>
-                     </div>
-                </div>
-
-                {/* Right Column: Preview */}
-                <div className="lg:col-span-8">
-                    <Card className="bg-gray-50 border-gray-200 border-dashed h-full min-h-[400px] flex flex-col">
-                        <CardHeader className="border-b border-gray-100 bg-white rounded-t-xl py-3">
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Vista Previa</span>
-                                <div className="flex gap-2">
-                                     <Button size="sm" variant="ghost" className="h-8 w-8 p-0"><Share2 className="h-4 w-4 text-gray-400" /></Button>
-                                     <Button size="sm" variant="ghost" className="h-8 w-8 p-0"><Download className="h-4 w-4 text-gray-400" /></Button>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="flex-1 flex items-center justify-center p-8">
-                            {/* Placeholder for the mockup image */}
-                            <div className="relative shadow-2xl rounded-lg overflow-hidden transition-transform duration-500 hover:scale-105">
-                                 {/* Simulating a book cover */}
-                                 <div className="w-64 aspect-[2/3] bg-gradient-to-br from-indigo-900 to-purple-800 p-6 flex flex-col justify-between text-center relative">
-                                    {/* Mockup lighting effect */}
-                                    <div className="absolute inset-0 bg-gradient-to-tr from-black/40 to-white/10 pointer-events-none"></div>
-                                    
-                                     <div>
-                                        <p className="text-amber-400 text-xs font-bold tracking-[0.2em] mb-4">BEST SELLER</p>
-                                        <h1 className="text-2xl font-serif text-white font-bold leading-tight drop-shadow-lg">{book.title}</h1>
-                                     </div>
-                                     <div className="border-t border-white/20 pt-4">
-                                         <p className="text-white/80 text-sm font-medium">{session?.user?.name || "Autor"}</p>
-                                     </div>
-                                 </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
-          </TabsContent>
 
         </Tabs>
       </div>
