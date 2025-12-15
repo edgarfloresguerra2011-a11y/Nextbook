@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "ebboka-53259604-4480e"
-  }
+  },
+  "targets": {
+    "ebboka-53259604-4480e": {
+      "hosting": {
+        "deployment": [
+          "ebboka-53259604-4480e"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }
