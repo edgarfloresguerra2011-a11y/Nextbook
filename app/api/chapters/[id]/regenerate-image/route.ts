@@ -150,16 +150,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // Pero si no generamos nada, la app se rompe.
   // Usaremos un modelo MEJOR de Pollinations especificando 'flux' explícitamente y 'enhance=true'
   if (!newImageUrl) {
-       if (!replicateConfig && !openaiConfig) {
-          // Si el usuario NO configuró keys, no tenemos opción.
-          // Pero usaremos FLUX real via Pollinations que ahora lo soporta.
-          console.log('[Regen] No keys found. Using Pollinations FLUX as absolute fallback.')
-          const encodedPrompt = encodeURIComponent(prompt)
-          newImageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?nologo=true&width=1024&height=1024&seed=${Math.floor(Math.random() * 10000)}&model=flux&enhance=true`
-       } else {
-           // Si TENÍA keys y fallaron, devolvemos error para que sepa que sus keys fallaron
-           return NextResponse.json({ error: 'Fallaron los proveedores premium (Replicate/OpenAI). Verifica tus API Keys y Créditos.' }, { status: 500 })
-       }
+       return NextResponse.json({ 
+           error: 'No se pudo generar la imagen. Asegúrate de tener una API Key válida de Replicate o OpenAI configurada en Ajustes.' 
+       }, { status: 400 })
   }
 
   if (newImageUrl) {

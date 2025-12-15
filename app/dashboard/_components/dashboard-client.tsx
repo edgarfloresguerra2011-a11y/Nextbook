@@ -266,7 +266,7 @@ export function DashboardClient({ books, user }: DashboardClientProps) {
                   <Sparkles className="w-6 h-6 text-emerald-600" />
                   Modo Autopilot - Generación Automática
                 </h2>
-                <p className="text-emerald-800 mb-3">
+                <p className="text-emerald-800 mb-3 text-justify">
                   Deja que la IA analice tendencias del mercado, redes sociales y demanda comercial para crear automáticamente un ebook optimizado para ventas máximas. Utiliza tus modelos configurados (OpenAI, Gemini, Anthropic, etc.) en modo cascada para máxima fiabilidad.
                 </p>
                 
@@ -288,7 +288,7 @@ export function DashboardClient({ books, user }: DashboardClientProps) {
                      )}
                   </div>
                 ) : (
-                <div className="flex flex-wrap items-center gap-3 text-sm text-emerald-700">
+                <div className="flex flex-wrap items-center gap-3 text-sm text-emerald-700 text-justify">
                   <div className="flex items-center gap-1">
                     <TrendingUp className="w-4 h-4" />
                     <span>Análisis de mercado</span>
@@ -417,7 +417,7 @@ export function DashboardClient({ books, user }: DashboardClientProps) {
                       </div>
                     </div>
                     <h3 className="font-bold text-lg text-slate-800 mb-1">Generando Libro...</h3>
-                    <p className="text-sm text-slate-500 mb-4 px-4">La IA está escribiendo los capítulos e ilustrando.</p>
+                    <p className="text-sm text-slate-500 mb-4 px-4 text-justify">La IA está escribiendo los capítulos e ilustrando.</p>
                     <div className="flex items-center gap-2 text-xs font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
                        <TrendingUp className="w-3 h-3" />
                        <span>{book.chapters?.length || 0} capítulos listos</span>

@@ -84,11 +84,9 @@ async function generateImage(prompt: string, apiKey?: string, replicateKey?: str
     }
   }
 
-  // Fallback to Pollinations.AI with Flux model (high quality free option)
-  // ONLY if no premium keys resulted in an image
-  console.log('🎨 Using Pollinations.AI Flux as fallback...')
-  const encodedPrompt = encodeURIComponent(enhancedPrompt)
-  return `https://image.pollinations.ai/prompt/${encodedPrompt}?nologo=true&width=1024&height=1024&seed=${Math.floor(Math.random() * 10000)}&model=flux&enhance=true`
+  // Fallback eliminados por solicitud del usuario (Solo calidad premium)
+  console.warn('⚠️ No image providers available or all failed. Returning null.')
+  return null
 }
 
 // ... (Generate Text function remains same) ...
