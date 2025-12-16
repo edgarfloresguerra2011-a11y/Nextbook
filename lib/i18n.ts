@@ -25,6 +25,8 @@ i18n
     backend: {
       loadPath: '/locales/{{lng}}/{{ns}}.json',
     },
+    defaultNS: 'common', // Use common.json by default
+    ns: ['common'],
     
     react: {
       useSuspense: false // Avoid hydration mismatch issues with suspense in Next.js pages router mainly, but good for stability here

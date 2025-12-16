@@ -1,10 +1,10 @@
-﻿DATABASE_URL="file:./dev.db"
+DATABASE_URL="file:./dev.db"
 NEXTAUTH_SECRET="KZhyTXwFcR1bGIfTUqq8d4Cxz6pvsQHn"
-NEXTAUTH_URL="https://ebboka-53259604-4480e.firebaseapp.com"
+NEXTAUTH_URL="http://localhost:3000"
 
-# Google OAuth Configuration
-GOOGLE_CLIENT_ID="243362733032-96ohf7gpct1ol96a59o5pv13c7fdtpqd.apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET=""
+# Google OAuth Configuration  
+GOOGLE_CLIENT_ID=your_google_client_id_here
+GOOGLE_CLIENT_SECRET=your_google_client_secret_here
 
 # AI Provider - Using OpenRouter with free models
 OPENROUTER_API_KEY=""

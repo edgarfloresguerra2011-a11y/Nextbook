@@ -1,4 +1,5 @@
-import { NextAuthOptions } from 'next-auth'
+// Auth options are standard. Ensure NEXTAUTH_URL is set in environment.
+// No changes needed here for standard dynamic support if env var is set.
 import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 import { PrismaAdapter } from '@next-auth/prisma-adapter'

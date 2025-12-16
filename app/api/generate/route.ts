@@ -115,17 +115,34 @@ export async function POST(request: NextRequest) {
     let requestedProvider = body.textProvider
     if (requestedProvider === 'default') requestedProvider = null
     let textConfig = requestedProvider ? providers.find((p: any) => p.provider === requestedProvider) : null
+    
+    // Fallback logic if no DB config found
     if (!textConfig) {
         const priorityOrder = ['openai', 'anthropic', 'google', 'openrouter', 'groq']
         for (const pName of priorityOrder) {
             textConfig = providers.find((p: any) => p.provider === pName)
             if (textConfig) break;
         }
-        if (!textConfig && providers.length > 0) textConfig = providers[0]
     }
-    
+
+    // SYSTEM FALLBACK: Use Environment Variables if DB is empty
+    if (!textConfig) {
+        if (process.env.OPENROUTER_API_KEY) {
+            textConfig = { provider: 'openrouter', apiKey: process.env.OPENROUTER_API_KEY, modelName: 'google/gemini-2.0-flash-exp:free' }
+        } else if (process.env.GOOGLE_API_KEY) {
+             textConfig = { provider: 'google', apiKey: process.env.GOOGLE_API_KEY, modelName: 'gemini-1.5-flash' }
+        } else if (process.env.OPENAI_API_KEY) {
+            textConfig = { provider: 'openai', apiKey: process.env.OPENAI_API_KEY, modelName: 'gpt-4o-mini' }
+        } else if (process.env.ANTHROPIC_API_KEY) {
+            textConfig = { provider: 'anthropic', apiKey: process.env.ANTHROPIC_API_KEY, modelName: 'claude-3-haiku-20240307' }
+        }
+    }
+
     const activeTextConfig = textConfig;
-    if (!activeTextConfig) return NextResponse.json({ message: 'No API Keys' }, { status: 400 })
+    if (!activeTextConfig) {
+        console.error("❌ No AI Provider configured in DB or .env");
+        return NextResponse.json({ message: 'No API Keys configured. Please add an API Key in Settings.' }, { status: 400 })
+    }
 
 
     // Stream Start
