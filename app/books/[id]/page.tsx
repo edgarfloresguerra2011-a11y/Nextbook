@@ -21,7 +21,7 @@ export default async function BookPage({ params }: PageProps) {
 
   const userId = (session.user as any)?.id
 
-  const book = await prisma.book.findFirst({
+  let book = await prisma.book.findFirst({
     where: {
       id: params?.id,
       userId,
@@ -31,7 +31,21 @@ export default async function BookPage({ params }: PageProps) {
         orderBy: { chapterNumber: 'asc' },
       },
     },
-  })
+  }) as any
+
+  if (book) {
+      // Manual fetch for new fields if missing (due to outdated Prisma Client)
+      if (!book.theme || !book.layout) {
+          try {
+             // Fetch raw generic fields
+             const rawBooks: any = await prisma.$queryRaw`SELECT theme, layout FROM books WHERE id=${book.id} LIMIT 1`
+             if (rawBooks && rawBooks[0]) {
+                 book.theme = rawBooks[0].theme
+                 book.layout = rawBooks[0].layout
+             }
+          } catch(e) { console.error("Raw fetch failed", e)}
+      }
+  }
 
   if (!book) {
     redirect('/dashboard')

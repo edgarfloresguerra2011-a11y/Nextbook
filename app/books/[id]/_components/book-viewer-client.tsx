@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { BookOpen, ArrowLeft, Download, Loader2, Palette, Save, RefreshCw, Sparkles, Copy, Bold, Italic, Underline, Type, Rocket, FileText, FileType, Layout, Columns, AlignJustify, AlignCenter, Grid, Maximize, Newspaper } from 'lucide-react'
+import { BookOpen, ArrowLeft, ArrowUp, Download, Loader2, Palette, Save, RefreshCw, Sparkles, Copy, Bold, Italic, Underline, Type, Rocket, FileText, FileType, Layout, Columns, AlignJustify, AlignCenter, Grid, Maximize, Newspaper } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
@@ -29,6 +29,8 @@ type Book = {
   wordCount?: number | null
   createdAt: Date
   chapters: Chapter[]
+  theme?: string | null
+  layout?: string | null
 }
 
 type BookViewerClientProps = {
@@ -36,7 +38,7 @@ type BookViewerClientProps = {
   planType?: string
 }
 
-type LayoutMode = 'standard' | 'magazine' | 'editorial' | 'newspaper' | 'cinematic' | 'cards'
+type LayoutMode = 'standard' | 'magazine' | 'editorial' | 'newspaper' | 'cinematic' | 'cards' | 'academic' | 'draft'
 
 // --- Theme Generator (EXPANDED) ---
 // Base Colors
@@ -128,14 +130,119 @@ export function BookViewerClient({ book, planType = 'free' }: BookViewerClientPr
   const router = useRouter()
   const [downloading, setDownloading] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
-  const [selectedTheme, setSelectedTheme] = useState<string>('papel_moderno')
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>('standard')
+  
+  // Initialize from saved state or defaults
+  const [selectedTheme, setSelectedTheme] = useState<string>(book.theme || 'swiss_master')
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>((book.layout as LayoutMode) || 'standard')
+  const [showScrollTop, setShowScrollTop] = useState(false)
+
+  // Scroll To Top Logic
+  useEffect(() => {
+    const handleScroll = () => {
+        if (window.scrollY > 400) {
+            setShowScrollTop(true)
+        } else {
+            setShowScrollTop(false)
+        }
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [regeneratingImageId, setRegeneratingImageId] = useState<string | null>(null)
+  const [isRegeneratingCover, setIsRegeneratingCover] = useState(false)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [isRewriting, setIsRewriting] = useState(false)
+  const [showLayoutMenu, setShowLayoutMenu] = useState(false)
+  const [showCoverModal, setShowCoverModal] = useState(false)
+  const [currentCoverUrl, setCurrentCoverUrl] = useState(book.coverImageUrl)
+  const [isSaving, setIsSaving] = useState(false)
 
-  const theme = BOOK_THEMES[selectedTheme] || BOOK_THEMES['crema_serif']
+  // Sync state if prop changes
+  useEffect(() => { setCurrentCoverUrl(book.coverImageUrl) }, [book.coverImageUrl])
+
+  const theme = BOOK_THEMES[selectedTheme] || BOOK_THEMES['swiss_master']
+
+  // Update theme handling to trigger save state
+  const handleThemeChange = (val: string) => {
+      setSelectedTheme(val)
+      setHasUnsavedChanges(true)
+  }
+
+  const handleLayoutChange = (mode: LayoutMode) => {
+      setLayoutMode(mode)
+      setHasUnsavedChanges(true)
+  }
+
+  const handleSaveChanges = async () => {
+      setIsSaving(true)
+      try {
+          const res = await fetch(`/api/books/${book.id}`, {
+              method: 'PATCH',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({
+                  theme: selectedTheme,
+                  layout: layoutMode
+              })
+          })
+          if (!res.ok) throw new Error('Failed to save')
+          
+          toast.success("Cambios guardados correctamente")
+          setHasUnsavedChanges(false)
+          router.refresh()
+      } catch (e) {
+          toast.error("Error guardando cambios")
+      } finally {
+          setIsSaving(false)
+      }
+  }
+
+  const handleRegenerateCover = async () => {
+     setIsRegeneratingCover(true)
+     try {
+         const res = await fetch(`/api/books/${book.id}/regenerate-cover`, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'regenerate' }) 
+            })
+         
+         let data;
+         try { data = await res.json() } catch (err) { throw new Error(`Server Error: ${res.status}`) }
+
+          if (data.imageUrl) {
+              setCurrentCoverUrl(data.imageUrl)
+              toast.success("Portada regenerada con éxito", { description: `Via ${data.provider}` })
+          } else if (data.error) {
+              console.error("[Cover Gen Error]:", data.details);
+              const detailsStr = data.details ? data.details.join('\n') : '';
+              
+              // Smart User Message based on error type
+              let userMsg = data.error;
+              if (detailsStr.includes('429') || detailsStr.includes('quota')) {
+                  userMsg = "Límite de cuota alcanzado. Espera unos minutos e intenta de nuevo.";
+              } else if (detailsStr.includes('402') || detailsStr.includes('billing_hard_limit')) {
+                  userMsg = "Tus llaves de AI (OpenAI/Replicate) no tienen saldo.";
+              } else if (detailsStr.includes('No image')) {
+                  userMsg = "El modelo no generó imagen. Intenta con otro prompt o espera unos minutos.";
+              }
+
+              toast.error("Error al generar portada", { 
+                  description: userMsg,
+                  duration: 8000
+              })
+         }
+     } catch (error: any) {
+          console.error("❌ [CLIENT] Regenerate Cover Error:", error);
+          toast.error("Error de conexión", { description: error.message });
+      } finally {
+          setIsRegeneratingCover(false)
+      }
+  }
 
   // Group themes by category with Premium first
   const themesByCategory = Object.entries(BOOK_THEMES).reduce((acc, [key, theme]) => {
@@ -182,10 +289,24 @@ export function BookViewerClient({ book, planType = 'free' }: BookViewerClientPr
 
   return (
     <div className={`min-h-screen ${theme.bodyBg} transition-colors duration-500`}>
-      {/* --- MENU FLOTANTE DE DISEÑO --- */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4 pointer-events-none">
+          {showScrollTop && (
+             <Button 
+                onClick={scrollToTop}
+                className="rounded-full w-12 h-12 bg-slate-800 hover:bg-slate-700 text-white shadow-xl pointer-events-auto animate-in slide-in-from-bottom-5"
+                size="icon"
+             >
+                <ArrowUp className="h-6 w-6" />
+             </Button>
+          )}
+
           {hasUnsavedChanges && (
-             <div className="pointer-events-auto"><Button onClick={() => window.location.reload()} className="bg-green-600 shadow-xl" size="lg"><Save className="mr-2 h-4 w-4" /> Guardar Todo</Button></div>
+             <div className="pointer-events-auto animate-in slide-in-from-bottom-4 fade-in duration-300">
+                 <Button onClick={handleSaveChanges} disabled={isSaving} className="bg-green-600 hover:bg-green-700 text-white shadow-xl ring-2 ring-green-200" size="lg">
+                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                     {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+                 </Button>
+             </div>
           )}
 
           <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-5 border border-slate-200/60 w-[380px] pointer-events-auto ring-1 ring-black/5 max-h-[80vh] overflow-y-auto">
@@ -198,7 +319,7 @@ export function BookViewerClient({ book, planType = 'free' }: BookViewerClientPr
                      <span className="text-xs font-bold text-gray-900 uppercase tracking-wider">Estilo Visual</span>
                    </div>
                    
-                   <Select value={selectedTheme} onValueChange={(value) => setSelectedTheme(value)}>
+                   <Select value={selectedTheme} onValueChange={handleThemeChange}>
                      <SelectTrigger className="w-full h-10 text-xs font-medium bg-slate-50 border-slate-200"><SelectValue placeholder="Selecciona..." /></SelectTrigger>
                      <SelectContent className="max-h-[300px]">
                        {sortedCategories.map((category) => (
@@ -215,39 +336,56 @@ export function BookViewerClient({ book, planType = 'free' }: BookViewerClientPr
                    </Select>
                </div>
 
-               {/* 2. DIAGRAMACIÓN (Layout Mode) */}
+               {/* 2. DIAGRAMACIÓN (Layout Mode) - Collapsible */}
                <div className="space-y-3">
-                   <div className="flex items-center gap-3 border-b border-gray-100 pb-2">
-                     <div className="bg-pink-50 p-1.5 rounded-lg"><Layout className="h-4 w-4 text-pink-600" /></div>
-                     <span className="text-xs font-bold text-gray-900 uppercase tracking-wider">Diagramación</span>
-                   </div>
+                   <button 
+                      onClick={() => setShowLayoutMenu(!showLayoutMenu)}
+                      className="w-full flex items-center justify-between gap-3 border-b border-gray-100 pb-2 hover:bg-gray-50 transition-colors rounded-sm px-1"
+                   >
+                     <div className="flex items-center gap-3">
+                        <div className="bg-pink-50 p-1.5 rounded-lg"><Layout className="h-4 w-4 text-pink-600" /></div>
+                        <span className="text-xs font-bold text-gray-900 uppercase tracking-wider">Diagramación</span>
+                     </div>
+                     <span className="text-xs text-gray-400">{showLayoutMenu ? 'Ocultar' : 'Mostrar'}</span>
+                   </button>
 
-                   <div className="grid grid-cols-2 gap-2">
-                       <LayoutButton 
-                          icon={AlignJustify} label="Estándar" active={layoutMode === 'standard'} 
-                          onClick={() => setLayoutMode('standard')} 
-                       />
-                       <LayoutButton 
-                          icon={Columns} label="Revista (2 Col)" active={layoutMode === 'magazine'} 
-                          onClick={() => setLayoutMode('magazine')} 
-                       />
-                       <LayoutButton 
-                          icon={Newspaper} label="Diario (3 Col)" active={layoutMode === 'newspaper'} 
-                          onClick={() => setLayoutMode('newspaper')} 
-                       />
-                       <LayoutButton 
-                          icon={AlignCenter} label="Novela (Centrado)" active={layoutMode === 'editorial'} 
-                          onClick={() => setLayoutMode('editorial')} 
-                       />
-                        <LayoutButton 
-                          icon={Maximize} label="Cinemático (Full)" active={layoutMode === 'cinematic'} 
-                          onClick={() => setLayoutMode('cinematic')} 
-                       />
-                       <LayoutButton 
-                          icon={Grid} label="Tarjetas" active={layoutMode === 'cards'} 
-                          onClick={() => setLayoutMode('cards')} 
-                       />
-                   </div>
+                   {showLayoutMenu && (
+                       <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-2 fade-in duration-200">
+                           <LayoutButton 
+                              icon={AlignJustify} label="Estándar" active={layoutMode === 'standard'} 
+                              onClick={() => handleLayoutChange('standard')} 
+                           />
+                           <LayoutButton 
+                              icon={Columns} label="Revista (2 Col)" active={layoutMode === 'magazine'} 
+                              onClick={() => handleLayoutChange('magazine')} 
+                           />
+                           <LayoutButton 
+                              icon={Newspaper} label="Diario (3 Col)" active={layoutMode === 'newspaper'} 
+                              onClick={() => handleLayoutChange('newspaper')} 
+                           />
+                           <LayoutButton 
+                              icon={AlignCenter} label="Novela (Centrado)" active={layoutMode === 'editorial'} 
+                              onClick={() => handleLayoutChange('editorial')} 
+                           />
+                            <LayoutButton 
+                              icon={Maximize} label="Cinemático (Full)" active={layoutMode === 'cinematic'} 
+                              onClick={() => handleLayoutChange('cinematic')} 
+                           />
+                           <LayoutButton 
+                              icon={Grid} label="Tarjetas" active={layoutMode === 'cards'} 
+                              onClick={() => handleLayoutChange('cards')} 
+                           />
+                           {/* New Layouts */}
+                            <LayoutButton 
+                              icon={FileType} label="Académico" active={layoutMode === 'academic'} 
+                              onClick={() => handleLayoutChange('academic')} 
+                           />
+                           <LayoutButton 
+                              icon={FileText} label="Borrador" active={layoutMode === 'draft'} 
+                              onClick={() => handleLayoutChange('draft')} 
+                           />
+                       </div>
+                   )}
                </div>
              </div>
           </div>
@@ -261,20 +399,123 @@ export function BookViewerClient({ book, planType = 'free' }: BookViewerClientPr
       `}>
         <Link href="/dashboard"><Button variant="ghost" className="mb-6 pl-0 text-slate-500 hover:bg-transparent hover:text-blue-600"><ArrowLeft className="mr-2 h-4 w-4" /> Volver</Button></Link>
         
+        {/* --- COVER PREVIEW & REGENERATION MODAL --- */}
+        {/* Needs Dialog Logic from 'shadcn/ui' but implementing as custom overlay for now to avoid dependency errors if Dialog not set up */}
+        {showCoverModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+                <div onClick={() => !isRegeneratingCover && setShowCoverModal(false)} className="absolute inset-0 cursor-pointer" />
+                <div className="relative z-10 bg-white p-2 rounded-xl shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col items-center">
+                    <div className="relative h-[70vh] aspect-[2/3] rounded-lg overflow-hidden bg-slate-100 shadow-inner">
+                        {currentCoverUrl ? (
+                            <img 
+                                src={currentCoverUrl} 
+                                alt="Cover Preview" 
+                                className="w-full h-full object-cover"
+                                style={{ display: 'block' }}
+                            />
+                        ) : (
+                              <div className="flex flex-col items-center justify-center w-full h-full text-slate-300">
+                                  <BookOpen className="w-24 h-24 mb-4" />
+                                  <span>Sin Portada</span>
+                              </div>
+                          )}
+                         
+                         {/* Loading Overlay */}
+                         {isRegeneratingCover && (
+                             <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white backdrop-blur-sm animate-in fade-in">
+                                 <Loader2 className="w-12 h-12 animate-spin mb-4 text-purple-400" />
+                                 <p className="font-bold text-lg animate-pulse">Diseñando nueva portada...</p>
+                                 <p className="text-sm opacity-70">Esto toma unos segundos</p>
+                             </div>
+                         )}
+                    </div>
+
+                    <div className="mt-6 flex gap-4 w-full justify-center">
+                        <Button 
+                            variant="secondary"
+                            size="lg"
+                            onClick={handleRegenerateCover} 
+                            disabled={isRegeneratingCover} 
+                            className="bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-200 shadow-sm min-w-[160px]"
+                        >
+                            <Sparkles className={`mr-2 h-4 w-4 ${isRegeneratingCover ? 'animate-spin' : ''}`} />
+                            {isRegeneratingCover ? 'Generando...' : 'Re-Generar'}
+                        </Button>
+
+                        <Button 
+                            variant="default" 
+                            size="lg" 
+                            onClick={() => setShowCoverModal(false)} 
+                            disabled={isRegeneratingCover}
+                            className="bg-slate-900 text-white hover:bg-slate-800 min-w-[160px] shadow-lg"
+                        >
+                            <Save className="mr-2 h-4 w-4" />
+                            Guardar
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* Header Block - Adapts to Cinema Mode */}
-        <div className={`${theme.chapterBg} rounded-2xl shadow-sm border ${theme.chapterBorder} overflow-hidden mb-12 p-8 md:p-12 transition-all duration-500 flex flex-col md:flex-row gap-10 items-start ${layoutMode === 'cinematic' ? 'max-w-screen-2xl mx-auto' : ''}`}>
-               {/* Cover */}
-               <div className="w-[180px] aspect-[2/3] relative flex-shrink-0 rounded-lg shadow-xl overflow-hidden group ring-1 ring-black/5">
-                   {book?.coverImageUrl ? <Image src={book.coverImageUrl} alt="Cover" fill className="object-cover" /> : <div className="bg-slate-100 w-full h-full flex items-center justify-center"><BookOpen className="text-slate-300 w-12 h-12" /></div>}
-               </div>
-               {/* Info */}
-               <div className="flex-1">
-                   <div className="flex gap-2 mb-4">
-                       <span className={`text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-1 border rounded-full ${theme.accentColor} border-current opacity-60`}>{book.genre || 'Libro'}</span>
+        {/* REFACTORED: Centered Layout Scheme as requested */}
+        <div className={`${theme.chapterBg} rounded-2xl shadow-xl border ${theme.chapterBorder} overflow-hidden mb-12 p-8 md:p-16 transition-all duration-500 relative ${layoutMode === 'cinematic' ? 'max-w-screen-2xl mx-auto' : ''}`}>
+               {/* Background Ambient Blur (Optional Polish) */}
+               <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-transparent via-${theme.accentColor?.split('-')[1] || 'gray'}-500 to-transparent opacity-20`}></div>
+               
+               <div className="flex flex-col items-center text-center gap-8 max-w-4xl mx-auto">
+                   
+                   {/* Cover Image - Centered & Interactive */}
+                   <div 
+                        onClick={() => setShowCoverModal(true)}
+                        className="w-[240px] aspect-[2/3] relative flex-shrink-0 rounded-lg shadow-2xl overflow-hidden group ring-4 ring-white/50 cursor-pointer transform hover:scale-[1.02] transition-all duration-300 bg-gray-200"
+                   >
+                       {currentCoverUrl ? (
+                           <img 
+                               src={currentCoverUrl} 
+                               alt="Cover" 
+                               className="w-full h-full object-cover" 
+                           />
+                       ) : (
+                           <div className="bg-slate-100 w-full h-full flex items-center justify-center"><BookOpen className="text-slate-300 w-12 h-12" /></div>
+                       )}
+                       
+                       {/* Hover Hint */}
+                       <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
+                           <Maximize className="text-white w-8 h-8 drop-shadow-lg" />
+                       </div>
                    </div>
-                   <h1 className={`text-4xl md:text-7xl font-black mb-6 ${theme.headerText} tracking-tighter leading-[0.95]`}>{book.title}</h1>
-                   <p className={`text-lg leading-relaxed max-w-3xl opacity-80 ${theme.textColor} mb-8 font-serif`}>{book.description}</p>
-                   <Link href={`/books/${book?.id}/export`}><Button className="bg-slate-900 text-white shadow-lg hover:shadow-xl transition-all"><Rocket className="mr-2 h-4 w-4" /> Exportar Libro</Button></Link>
+
+                   {/* Title & Info - Centered */}
+                   <div className="flex flex-col items-center">
+                       <span className={`text-[10px] font-bold uppercase tracking-[0.3em] px-4 py-1.5 border rounded-full ${theme.accentColor} border-current opacity-70 mb-6 bg-white/50 backdrop-blur-sm`}>
+                            {book.genre || 'Género'}
+                       </span>
+                       
+                       <h1 className={`text-5xl md:text-7xl font-black mb-6 ${theme.headerText} tracking-tight leading-[0.95] max-w-2xl`}>
+                            {book.title}
+                       </h1>
+                       
+                       <p className={`text-lg md:text-xl leading-relaxed max-w-2xl opacity-90 ${theme.textColor} mb-10 font-serif`}>
+                            {book.description}
+                       </p>
+                       
+                       <div className="flex items-center gap-4">
+                            <Button 
+                                onClick={() => setShowCoverModal(true)}
+                                variant="outline" 
+                                className="border-slate-300 hover:bg-slate-100 text-slate-700"
+                            >
+                                <RefreshCw className="mr-2 h-4 w-4" /> Cambiar Portada
+                            </Button>
+                            
+                            <Link href={`/books/${book?.id}/export`}>
+                                <Button className="bg-slate-900 text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all text-base px-8 py-6 h-auto">
+                                    <Rocket className="mr-2 h-5 w-5" /> Exportar Libro
+                                </Button>
+                            </Link>
+                       </div>
+                   </div>
                </div>
         </div>
 
@@ -343,11 +584,12 @@ function SelectionMenu({ onRewrite, isRewriting }: { onRewrite: (text: string, r
     if (!position) return null;
 
     return (
+        /* eslint-disable-next-line @next/next/no-img-element, react/style-prop-object */
         <div className="absolute z-50 flex items-center gap-1 bg-slate-900/90 backdrop-blur text-white p-1 rounded-full shadow-2xl scale-in-center animate-in fade-in zoom-in duration-150 border border-white/20" style={{ left: position.x, top: position.y, transform: 'translate(-50%, -100%)' }} onMouseDown={(e) => e.preventDefault()}>
             {isRewriting ? <div className="flex items-center gap-2 px-3 py-1 text-xs text-purple-300 font-medium"><Loader2 className="w-3 h-3 animate-spin" /><span>Magic...</span></div> : (
                 <>
-                    <button onClick={() => document.execCommand('bold')} className="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors"><Bold className="w-4 h-4" /></button>
-                    <button onClick={() => document.execCommand('italic')} className="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors"><Italic className="w-4 h-4" /></button>
+                    <button onClick={() => document.execCommand('bold')} aria-label="Negrita" className="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors"><Bold className="w-4 h-4" /></button>
+                    <button onClick={() => document.execCommand('italic')} aria-label="Cursiva" className="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors"><Italic className="w-4 h-4" /></button>
                     <div className="w-px h-4 bg-white/20 mx-0.5"></div>
                     <button onClick={() => { if(selectionRange) onRewrite(selectedText, selectionRange) }} className="flex items-center gap-1 pl-2 pr-3 py-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 rounded-full text-xs font-bold transition-all shadow-lg active:scale-95"><Sparkles className="w-3 h-3" /> IA</button>
                 </>
@@ -365,6 +607,8 @@ function ChapterRenderer({ chapter, theme, layoutMode, regeneratingImageId, setR
     const isEditorial = layoutMode === 'editorial'
     const isCards = layoutMode === 'cards'
     const isCinematic = layoutMode === 'cinematic'
+    const isAcademic = layoutMode === 'academic'
+    const isDraft = layoutMode === 'draft'
 
     // Determine container classes based on layout
     let containerClass = `p-8 md:p-12 relative `
@@ -372,19 +616,61 @@ function ChapterRenderer({ chapter, theme, layoutMode, regeneratingImageId, setR
     if (isNewspaper) containerClass += `md:columns-3 gap-8 text-justify text-sm`
     if (isEditorial) containerClass += `max-w-xl mx-auto text-lg leading-loose`
     if (isCinematic) containerClass += `max-w-4xl mx-auto text-xl leading-relaxed`
+    if (isAcademic) containerClass += `max-w-3xl mx-auto text-base font-serif leading-7 border-l-4 border-gray-100 pl-8`
+    if (isDraft) containerClass += `max-w-2xl mx-auto font-mono text-sm leading-relaxed bg-yellow-50/50 p-4 border border-dashed border-yellow-200`
     if (isCards) containerClass += `p-6` // Content inside card
 
+
+
     const [currentImageUrl, setCurrentImageUrl] = useState(chapter.imageUrl)
+    const [selectedStyle, setSelectedStyle] = useState('cinematic');
 
     const handleRegenerateImage = async () => {
          setRegeneratingImageId(chapter.id)
          try {
-            const res = await fetch(`/api/chapters/${chapter.id}/regenerate-image`, { method: 'POST' })
-            const data = await res.json()
-            if (data.imageUrl) { setCurrentImageUrl(data.imageUrl); toast.success("Imagen regenerada") }
-         } catch(e) { toast.error("Error regenerando imagen") }
-         setRegeneratingImageId(null)
+            const res = await fetch(`/api/chapters/${chapter.id}/regenerate-image`, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ style: selectedStyle }) // Send Style
+            })
+            // Parse response regardless of status (e.g. 200 with error field, or 400/500 text)
+            let data;
+            try { 
+                data = await res.json() 
+            } catch (err) {
+                 // Fallback if not JSON (e.g. 500 error page)
+                 throw new Error(`Server Error: ${res.status} ${res.statusText}`);
+            }
+
+            if (data.imageUrl) { 
+                setCurrentImageUrl(data.imageUrl); 
+                toast.success("Imagen regenerada", { description: `Via ${data.provider}` }) 
+            } else if (data.error) {
+                console.error("[Regen Error Details]:", data.details);
+                // Join details for the toast, or just show the first few
+                const detailsStr = data.details ? data.details.join('\n') : '';
+                toast.error("Fallo la regeneración", { 
+                    description: `${data.error}\n${detailsStr}`,
+                    duration: 10000 // Show longer so user can read
+                });
+            }
+         } catch(e: any) { 
+             console.error("Client Regen Error:", e);
+             toast.error("Error de Sistema", { description: e.message });
+         } finally {
+             setRegeneratingImageId(null)
+         }
     }
+
+    const STYLES = [
+        { id: 'cinematic', label: '🎥 Realista' },
+        { id: 'comic', label: '💥 Cómic' },
+        { id: 'anime', label: '🎌 Anime' },
+        { id: 'fantasy', label: '🐉 Fantasía' },
+        { id: 'watercolor', label: '🎨 Acuarela' },
+        { id: 'cyberpunk', label: '🤖 Cyber' },
+        { id: 'sketch', label: '✏️ Boceto' },
+    ];
 
     return (
         <article className={`
@@ -418,9 +704,31 @@ function ChapterRenderer({ chapter, theme, layoutMode, regeneratingImageId, setR
                     ${(!isMagazine && !isNewspaper && !isCards) ? 'aspect-video' : ''}
                 `}>
                   <Image src={currentImageUrl} alt="Chapter Art" fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-                       <Button variant="secondary" onClick={handleRegenerateImage} disabled={regeneratingImageId === chapter.id} className="shadow-2xl">
-                          <RefreshCw className={`mr-2 h-4 w-4 ${regeneratingImageId === chapter.id ? 'animate-spin' : ''}`}/> Regenerar Arte
+                  
+                  {/* Style Selector Overlay */}
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-sm gap-4 p-4">
+                       
+                       <div className="flex flex-wrap justify-center gap-2 max-w-md">
+                           {STYLES.map(s => (
+                               <button 
+                                key={s.id}
+                                onClick={() => setSelectedStyle(s.id)}
+                                className={`
+                                    px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all
+                                    ${selectedStyle === s.id 
+                                        ? 'bg-white text-black shadow-lg scale-105' 
+                                        : 'bg-black/40 text-white/70 hover:bg-white/20 hover:text-white border border-white/10'
+                                    }
+                                `}
+                               >
+                                {s.label}
+                               </button>
+                           ))}
+                       </div>
+
+                       <Button variant="secondary" onClick={handleRegenerateImage} disabled={regeneratingImageId === chapter.id} className="shadow-2xl h-9 px-6 font-bold tracking-wide">
+                          <RefreshCw className={`mr-2 h-4 w-4 ${regeneratingImageId === chapter.id ? 'animate-spin' : ''}`}/> 
+                          {regeneratingImageId === chapter.id ? 'Creando Arte...' : 'Regenerar Arte'}
                        </Button>
                   </div>
                 </div>

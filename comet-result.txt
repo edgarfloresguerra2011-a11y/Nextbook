@@ -1,0 +1,10 @@
+=== COMETAPI TEST ===
+Status: 403
+Response: {
+  "error": {
+    "message": "user quota is not enough, remaining quota: ＄0.000000 (request id: 20251216081147120193055CP1I6pHG)",
+    "type": "comet_api_error",
+    "param": "",
+    "code": "insufficient_user_quota"
+  }
+}

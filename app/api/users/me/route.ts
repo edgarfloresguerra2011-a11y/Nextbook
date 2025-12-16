@@ -11,7 +11,7 @@ export async function PATCH(req: Request) {
     }
 
     const body = await req.json()
-    const { name, bio, website, twitter, instagram, linkedin, image } = body
+    const { name, bio, website, twitter, instagram, linkedin, image, facebook, tiktok } = body
     const userId = (session.user as any).id
     
     // Update user

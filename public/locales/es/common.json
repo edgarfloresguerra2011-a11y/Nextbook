@@ -25,7 +25,7 @@
     "ja": "日本語",
     "zh": "中文"
   },
-  "settings": {
+  "settings_page": {
     "title": "Configuración",
     "language_desc": "Cambia el idioma de la interfaz",
     "theme_desc": "Personaliza la apariencia (Próximamente)",

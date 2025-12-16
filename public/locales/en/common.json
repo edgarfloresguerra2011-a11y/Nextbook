@@ -25,7 +25,7 @@
     "ja": "Japanese",
     "zh": "Chinese"
   },
-  "settings": {
+  "settings_page": {
     "title": "Settings",
     "language_desc": "Change interface language",
     "theme_desc": "Customize appearance (Coming soon)",

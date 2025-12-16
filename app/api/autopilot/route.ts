@@ -207,20 +207,29 @@ async function generateImage(
       
       // Replicate (Flux)
       if (config.provider === 'replicate') {
-        // Note: Replicate requires polling, so we use a simpler model
-        const response = await fetch('https://api.replicate.com/v1/predictions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Token ${config.apiKey}` },
-          body: JSON.stringify({
-            version: "black-forest-labs/flux-schnell",
-            input: { prompt: enhancedPrompt }
-          })
-        })
-        if (response.ok) {
-          const prediction = await response.json()
-          // Wait for result (simplified - in production would poll)
-          if (prediction.output) return prediction.output[0]
-        }
+         // Use the prediction API directly if possible, or wait for result
+         const response = await fetch('https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json', 'Authorization': `Token ${config.apiKey}` },
+           body: JSON.stringify({ input: { prompt: enhancedPrompt } })
+         })
+         
+         if (response.ok) {
+            let prediction = await response.json()
+            // Simple polling
+            let attempts = 0
+            while (prediction.status !== "succeeded" && prediction.status !== "failed" && attempts < 10) {
+               await new Promise(r => setTimeout(r, 1500))
+               const statusRes = await fetch(prediction.urls.get, {
+                   headers: { "Authorization": `Token ${config.apiKey}` }
+               })
+               prediction = await statusRes.json()
+               attempts++
+            }
+            if (prediction.status === "succeeded" && prediction.output) {
+                return Array.isArray(prediction.output) ? prediction.output[0] : prediction.output
+            }
+         }
       }
       
     } catch (e: any) {
@@ -228,10 +237,8 @@ async function generateImage(
     }
   }
   
-  // Final Fallback: Pollinations (Free, always works)
-  console.log('[Image] All providers failed, using Pollinations fallback')
-  const encodedPrompt = encodeURIComponent(enhancedPrompt)
-  return `https://image.pollinations.ai/prompt/${encodedPrompt}?nologo=true&width=1024&height=1024&seed=${Math.floor(Math.random() * 1000)}&model=flux`
+  // No fallback to Pollinations as per user request
+  throw new Error("No se pudo generar la imagen con ninguno de los proveedores configurados.")
 }
 
 

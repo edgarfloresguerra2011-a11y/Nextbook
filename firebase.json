@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "ebboka-53259604-4480e",
     "source": ".",
     "ignore": [
       "firebase.json",

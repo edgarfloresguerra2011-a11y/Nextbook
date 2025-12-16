@@ -144,7 +144,7 @@ export async function POST(
     const buffer = await Packer.toBuffer(doc)
 
     // Return as downloadable file
-    return new NextResponse(buffer, {
+    return new NextResponse(buffer as any, {
       headers: {
         'Content-Type':
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

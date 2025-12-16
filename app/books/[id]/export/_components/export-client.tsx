@@ -100,7 +100,7 @@ const AmazonIcon = () => (
 
 const GumroadIcon = () => (
   <svg viewBox="0 0 24 24" className="h-8 w-8" fill="#FF90E8">
-     <path d="M4.346 2.977c2.308-.225 3.996-1.218 5.764.126 1.93 1.467 2.378 5.56 2.378 10.368 0 2.28-.204 4.417-.557 6.136-1.554.437-3.155.845-4.802 1.222-.44-1.293-.728-2.65-.86-4.062a26.046 26.046 0 0 1-.166-4.562c.032-2.18.25-3.328 1.782-4.102 0 0-1.127-.723-1.764-.723-1.895 0-3.332 1.503-3.905 5.584-.337.078-.667.158-.992.239-.564 5.253 2.893 8.356 8.528 7.398 5.485-.933 11.246-8.572 11.246-15.013 0-5.518-3.048-5.323-5.378-5.323-3.562 0-8.834 2.484-11.274 2.712zm10.74 3.737c1.373 1.259 1.488 4.295.347 10.158 1.485-3.333 1.637-6.845.895-8.89-.356-.98-1.242-1.268-1.242-1.268z" style={{fill: '#ff90e8'}}/>
+     <path d="M4.346 2.977c2.308-.225 3.996-1.218 5.764.126 1.93 1.467 2.378 5.56 2.378 10.368 0 2.28-.204 4.417-.557 6.136-1.554.437-3.155.845-4.802 1.222-.44-1.293-.728-2.65-.86-4.062a26.046 26.046 0 0 1-.166-4.562c.032-2.18.25-3.328 1.782-4.102 0 0-1.127-.723-1.764-.723-1.895 0-3.332 1.503-3.905 5.584-.337.078-.667.158-.992.239-.564 5.253 2.893 8.356 8.528 7.398 5.485-.933 11.246-8.572 11.246-15.013 0-5.518-3.048-5.323-5.378-5.323-3.562 0-8.834 2.484-11.274 2.712zm10.74 3.737c1.373 1.259 1.488 4.295.347 10.158 1.485-3.333 1.637-6.845.895-8.89-.356-.98-1.242-1.268-1.242-1.268z" fill="#ff90e8" />
   </svg>
 )
 
@@ -433,12 +433,7 @@ ${marketplace.price ? `Precio Sugerido: ${marketplace.price}` : ''}`
             >
               <Share2 className="mr-2 h-4 w-4" /> Integraciones
             </TabsTrigger>
-            <TabsTrigger 
-              value="summary" 
-              className="px-4 py-2.5 text-sm data-[state=active]:bg-gray-100 data-[state=active]:text-gray-900 text-gray-500 rounded-md"
-            >
-              <FileText className="mr-2 h-4 w-4" /> Resumen
-            </TabsTrigger>
+
             <TabsTrigger 
               value="formats" 
               className="px-4 py-2.5 text-sm data-[state=active]:bg-gray-100 data-[state=active]:text-gray-900 text-gray-500 rounded-md"
@@ -452,37 +447,23 @@ ${marketplace.price ? `Precio Sugerido: ${marketplace.price}` : ''}`
               <Wand2 className="mr-2 h-4 w-4" /> Copywriting
             </TabsTrigger>
             <TabsTrigger 
-              value="kindle" 
+              value="preview" 
               className="px-4 py-2.5 text-sm data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900 text-gray-500 rounded-md font-medium"
             >
-              <Monitor className="mr-2 h-4 w-4" /> Mockups & Preview
+              <Eye className="mr-2 h-4 w-4" /> Previsualización
+            </TabsTrigger>
+            <TabsTrigger 
+              value="mockups" 
+              className="px-4 py-2.5 text-sm data-[state=active]:bg-pink-50 data-[state=active]:text-pink-700 text-gray-500 rounded-md font-medium"
+            >
+              <Sparkles className="mr-2 h-4 w-4" /> Mockups Publicitarios
             </TabsTrigger>
           </TabsList>
 
           {/* ============================================ */}
           {/* TAB: RESUMEN */}
           {/* ============================================ */}
-          <TabsContent value="summary" className="m-0">
-             {/* Same as before */}
-             <Card className="bg-white border-gray-200">
-              <CardHeader>
-                <CardTitle className="text-lg">Resumen del Libro</CardTitle>
-                <CardDescription>Información general de tu ebook</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">Título</p>
-                    <p className="font-semibold text-gray-900">{book.title}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">Género</p>
-                    <p className="font-semibold text-gray-900">{book.genre || 'Sin definir'}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+
 
           {/* ============================================ */}
           {/* TAB: FORMATOS */}
@@ -750,26 +731,143 @@ ${marketplace.price ? `Precio Sugerido: ${marketplace.price}` : ''}`
           </TabsContent>
 
           {/* ============================================ */}
-          {/* TAB: KINDLE PREVIEW */}
+          {/* TAB: PREVIEW (Lectura) */}
           {/* ============================================ */}
-{/* ============================================ */}
-          {/* TAB: PREVIEW / MOCKUPS (Fusionado) */}
-          {/* ============================================ */}
-          <TabsContent value="kindle" className="m-0 space-y-6">
+          <TabsContent value="preview" className="m-0 space-y-6">
              <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                   <h2 className="text-xl font-bold text-gray-900">Previsualización Multidispositivo</h2>
-                   <p className="text-gray-500 text-sm">Visualiza cómo verán tus lectores el libro en diferentes pantallas.</p>
+                   <h2 className="text-xl font-bold text-gray-900">Vista de Lector</h2>
+                   <p className="text-gray-500 text-sm">Verifica la legibilidad y apariencia de tu libro en dispositivos reales.</p>
                 </div>
                 <Badge variant="secondary" className="w-fit">Actualizado: Preview v2.0</Badge>
              </div>
              
-             {/* Device Preview Component */}
              <DevicePreview book={book} />
           </TabsContent>
 
-          {/* ... (Other Tabs Content would follow if not replaced) ... */
+          {/* ============================================ */}
+          {/* TAB: MOCKUPS (Marketing) */}
+          {/* ============================================ */}
+          <TabsContent value="mockups" className="m-0 space-y-6">
+              <div className="mb-6">
+                   <h2 className="text-xl font-bold text-gray-900">Mockups de Venta</h2>
+                   <p className="text-gray-500 text-sm">Visualiza tu libro en composiciones profesionales de venta y branding.</p>
+              </div>
+              <MarketingMockups book={book} />
+          </TabsContent>
+          
+{/* End of Tabs */}
+
+
+        </Tabs>
+      </div>
+    </div>
+  )
 }
+
+function MarketingMockups({ book }: { book: Book }) {
+  return (
+    <div className="grid md:grid-cols-2 gap-8">
+        
+        {/* SCENE 1: Book + Phone (Reading Experience) */}
+        <div className="bg-white rounded-xl border border-gray-200 p-8 flex flex-col items-center justify-center min-h-[400px] relative overflow-hidden group hover:border-blue-400 transition-all shadow-sm hover:shadow-lg">
+             <div className="absolute inset-0 bg-gradient-to-b from-gray-50 to-white opacity-50"></div>
+             <div className="relative z-10 flex items-end gap-x-4 transform translate-y-4 group-hover:translate-y-2 transition-transform duration-500">
+                 {/* 3D Book Standing */}
+                  <div className="relative w-32 aspect-[2/3] bg-white shadow-[10px_10px_30px_rgba(0,0,0,0.3)] transform -rotate-y-12 transition-transform duration-500 group-hover:rotate-0">
+                      <div className="absolute inset-0 bg-white">
+                          {book.coverImageUrl ? <img src={book.coverImageUrl} alt="Portada Libro 3D" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-200" />}
+                      </div>
+                      {/* Spine hint */}
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-r from-black/20 to-transparent"></div>
+                  </div>
+
+                  {/* Phone Leaning */}
+                  <div className="relative w-16 h-32 bg-gray-900 rounded-xl border-2 border-gray-700 shadow-xl transform rotate-12 translate-x-2 -translate-y-2">
+                       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-4 bg-gray-900 rounded-b-lg z-20"></div>
+                       <div className="absolute inset-0.5 bg-white rounded-[10px] overflow-hidden">
+                           {book.coverImageUrl && <img src={book.coverImageUrl} alt="Portada App" className="w-full h-full object-cover opacity-90" />}
+                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-2">
+                               <div className="w-full h-1 bg-white/50 rounded-full"></div>
+                           </div>
+                       </div>
+                  </div>
+             </div>
+             <div className="absolute bottom-4 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Libro + App</span>
+             </div>
+        </div>
+
+        {/* SCENE 2: Three Devices (Digital Ecosystem) */}
+         <div className="bg-white rounded-xl border border-gray-200 p-8 flex flex-col items-center justify-center min-h-[400px] relative overflow-hidden group hover:border-purple-400 transition-all shadow-sm hover:shadow-lg">
+             <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 to-blue-50/50 opacity-50"></div>
+             
+             <div className="relative z-10 flex items-end justify-center perspective-1000 transform scale-90 group-hover:scale-100 transition-transform duration-500">
+                  {/* Laptop Back */}
+                  <div className="relative mb-8 mr-[-40px] z-0 transform scale-75 origin-bottom-right opacity-80 blur-[0.5px] group-hover:blur-0 transition-all">
+                       <div className="w-64 h-40 bg-gray-800 rounded-t-lg border-4 border-gray-700 overflow-hidden relative">
+                            {book.coverImageUrl && <img src={book.coverImageUrl} alt="Fondo Laptop" className="w-full h-full object-cover opacity-70" />}
+                       </div>
+                       <div className="w-72 h-3 bg-gray-300 rounded-b-lg -ml-4 shadow-xl"></div>
+                  </div>
+                  
+                  {/* Tablet Center */}
+                  <div className="relative z-10 w-32 h-44 bg-gray-900 rounded-xl border-4 border-gray-800 shadow-2xl transform -rotate-6 mx-[-20px]">
+                       <div className="w-full h-full bg-white rounded-lg overflow-hidden">
+                            {book.coverImageUrl && <img src={book.coverImageUrl} alt="Pantalla Tablet" className="w-full h-full object-cover" />}
+                       </div>
+                  </div>
+
+                  {/* Phone Front */}
+                  <div className="relative z-20 w-14 h-28 bg-black rounded-xl border-2 border-gray-800 shadow-xl transform rotate-12 mb-2 ml-4">
+                       <div className="w-full h-full bg-white rounded-[9px] overflow-hidden">
+                            {book.coverImageUrl && <img src={book.coverImageUrl} alt="Pantalla Celular" className="w-full h-full object-cover" />}
+                       </div>
+                  </div>
+             </div>
+             <div className="absolute bottom-4 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Ecosistema Digital</span>
+             </div>
+        </div>
+
+        {/* SCENE 3: FULL BUNDLE (Wide) */}
+        <div className="md:col-span-2 bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl p-12 flex flex-col items-center justify-center min-h-[500px] relative overflow-hidden group hover:shadow-2xl transition-all border border-slate-700">
+            {/* Background Glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-500/20 blur-[100px] rounded-full"></div>
+            
+            <div className="relative z-10 flex items-end justify-center gap-8 perspective-1000 transform scale-90 group-hover:scale-100 transition-transform duration-700">
+                 {/* Stack of Books */}
+                 <div className="relative transform rotate-y-12 translate-x-10 z-0 opacity-80">
+                     <div className="w-40 aspect-[2/3] bg-white border-l-4 border-gray-300 shadow-2xl transform -rotate-6 rounded-l-sm"></div>
+                     <div className="absolute top-2 w-40 aspect-[2/3] bg-white border-l-4 border-gray-300 shadow-2xl transform -rotate-3 rounded-l-sm"></div>
+                 </div>
+
+                 {/* Main Book */}
+                 <div className="relative w-48 aspect-[2/3] bg-white shadow-[0_20px_50px_rgba(0,0,0,0.5)] transform -rotate-y-12 z-20 group-hover:translate-z-10 transition-transform">
+                      {book.coverImageUrl ? <img src={book.coverImageUrl} alt="Portada Principal Pack" className="w-full h-full object-cover" /> : <div className="bg-gray-200"></div>}
+                      {/* Reflection */}
+                      <div className="absolute -bottom-[100%] left-0 right-0 h-full bg-gradient-to-b from-white/20 to-transparent transform scale-y-[-1] opacity-30 mask-image-linear-to-b">
+                           {book.coverImageUrl && <img src={book.coverImageUrl} alt="Reflejo Portada" className="w-full h-full object-cover blur-sm" />}
+                      </div>
+                 </div>
+
+                 {/* Digital Badge */}
+                 <div className="absolute top-0 right-[-20px] bg-yellow-400 text-black font-black text-xs px-3 py-1 rounded shadow-lg transform rotate-12">
+                     MEGA PACK
+                 </div>
+            </div>
+
+            <div className="absolute bottom-6 left-0 right-0 text-center">
+                 <span className="text-sm font-bold text-slate-400 uppercase tracking-[0.3em] group-hover:text-white transition-colors">Pack Promocional Completo</span>
+            </div>
+        </div>
+
+    </div>
+  )
+}
+
+
+
 
 function DevicePreview({ book }: { book: Book }) {
    const [device, setDevice] = useState<'kindle' | 'phone' | 'tablet' | 'laptop'>('kindle')
@@ -819,7 +917,7 @@ function DevicePreview({ book }: { book: Book }) {
                                 <span>Cap. 1</span>
                              </div>
                              <div className="flex-1 flex flex-col items-center justify-center text-center">
-                                {book.coverImageUrl && <img src={book.coverImageUrl} className="w-32 h-48 object-cover shadow-lg mb-4 mix-blend-multiply border border-black/10" />}
+                                {book.coverImageUrl && <img src={book.coverImageUrl} alt="Portada Kindle" className="w-32 h-48 object-cover shadow-lg mb-4 mix-blend-multiply border border-black/10" />}
                                 <h2 className="font-serif font-bold text-lg leading-tight mb-2 text-black">{book.title}</h2>
                                 <p className="font-serif text-[10px] italic text-gray-800">{book.genre}</p>
                              </div>
@@ -851,7 +949,7 @@ function DevicePreview({ book }: { book: Book }) {
                           {/* App Content */}
                           <div className="flex-1 overflow-y-auto no-scrollbar bg-white relative pb-8">
                               <div className="h-[300px] w-full relative">
-                                 {book.coverImageUrl ? <img src={book.coverImageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-blue-100"/>}
+                                 {book.coverImageUrl ? <img src={book.coverImageUrl} alt="Portada App Móvil" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-blue-100"/>}
                                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-6">
                                      <h1 className="text-2xl font-bold text-white leading-tight drop-shadow-md">{book.title}</h1>
                                  </div>
@@ -889,7 +987,7 @@ function DevicePreview({ book }: { book: Book }) {
                                 <h1 className="text-2xl font-black mb-4 text-gray-900">{book.title}</h1>
                                 <div className="flex gap-4">
                                     <div className="w-32 aspect-[2/3] relative flex-shrink-0 shadow-xl transform -rotate-2 border border-gray-100 bg-white p-1">
-                                        {book.coverImageUrl && <img src={book.coverImageUrl} className="w-full h-full object-cover rounded-sm" />}
+                                        {book.coverImageUrl && <img src={book.coverImageUrl} alt="Portada Tablet" className="w-full h-full object-cover rounded-sm" />}
                                     </div>
                                     <div className="flex-1 space-y-3 pt-2">
                                         <div className="h-2 w-full bg-gray-100 rounded"></div>
@@ -922,7 +1020,7 @@ function DevicePreview({ book }: { book: Book }) {
                              {/* Web Reader UI */}
                              <div className="flex-1 flex bg-white font-sans text-gray-800">
                                   <div className="w-[200px] border-r border-gray-100 p-6 flex flex-col items-center justify-center bg-gray-50/50">
-                                      {book.coverImageUrl && <img src={book.coverImageUrl} className="w-32 shadow-2xl rounded-sm mb-4 transform hover:scale-105 transition-transform duration-500" />}
+                                      {book.coverImageUrl && <img src={book.coverImageUrl} alt="Portada Laptop" className="w-32 shadow-2xl rounded-sm mb-4 transform hover:scale-105 transition-transform duration-500" />}
                                   </div>
                                   <div className="flex-1 p-8 overflow-y-auto">
                                       <h1 className="text-3xl font-bold mb-6 text-gray-900">{book.title}</h1>
@@ -946,15 +1044,4 @@ function DevicePreview({ book }: { book: Book }) {
           </div>
       </div>
    )
-}
-
-          {/* ============================================ */}
-          {/* TAB: MOCKUPS */}
-          {/* ============================================ */}
-
-
-        </Tabs>
-      </div>
-    </div>
-  )
 }

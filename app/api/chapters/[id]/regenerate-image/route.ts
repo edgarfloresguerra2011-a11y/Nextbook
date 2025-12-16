@@ -3,7 +3,11 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { prisma } from '@/lib/db'
 
+export const maxDuration = 60; 
+
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  console.log(`[RegenChapter] 🚀 Request for chapter: ${params.id}`);
+
   const session = await getServerSession(authOptions)
   if (!session?.user?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -12,159 +16,155 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const chapterId = params.id
   const userId = (session.user as any).id
 
-  // 1. Obtener información
-  const chapter = await prisma.chapter.findUnique({
-    where: { id: chapterId },
-    include: { book: true }
-  })
+  const [chapter, user] = await Promise.all([
+      prisma.chapter.findUnique({ where: { id: chapterId }, include: { book: true } }),
+      prisma.user.findUnique({ where: { id: userId } })
+  ]);
 
-  if (!chapter) return NextResponse.json({ error: 'Chapter not found' }, { status: 404 })
+  if (!chapter) return NextResponse.json({ error: 'Chapter not found' }, { status: 404 });
+  if (!user || user.credits < 1) return NextResponse.json({ error: 'Créditos insuficientes' }, { status: 403 });
 
-  // 2. Verificar Créditos
-  const user = await prisma.user.findUnique({ where: { id: userId } })
-  if (!user || user.credits < 1) {
-      return NextResponse.json({ error: 'Créditos insuficientes' }, { status: 403 })
-  }
-
-  // 3. Obtener todas las configs activas
-  const providers = await prisma.providerConfig.findMany({
-    where: { userId, isActive: true }
-  })
+  const body = await req.json().catch(() => ({})); 
+  const requestedStyle = body.style || 'cinematic';
   
-  const replicateConfig = providers.find((p: any) => p.provider === 'replicate')
-  const openaiConfig = providers.find((p: any) => p.provider === 'openai')
-  const huggingfaceConfig = providers.find((p: any) => p.provider === 'huggingface')
-
-  // Mejorar el prompt para realismo
-  const prompt = `Hyper-realistic minimalist photography for book chapter "${chapter.title}". Context: ${chapter.book.title}. Style: ${chapter.book.genre}, award winning photography, 8k, highly detailed, dramatic lighting, cinematic composition, rule of thirds, no text, no words`
+  let styleDesc = "photorealistic, cinematic lighting, 8k quality, dramatic composition";
+  if (requestedStyle === 'comic') styleDesc = "comic book art, vivid colors, bold lines";
+  if (requestedStyle === 'anime') styleDesc = "anime style, Studio Ghibli inspired, detailed background";
+  if (requestedStyle === 'embroidery') styleDesc = "embroidery style, needlework texture, fabric pattern";
   
-  let newImageUrl = ''
-  let usedProvider = ''
+  const contentSnippet = chapter.content?.substring(0, 300) || '';
+  const prompt = `Create an illustration for a book chapter titled "${chapter.title}". 
+Book: "${chapter.book.title}" (${chapter.book.genre}).
+Scene context: ${contentSnippet}
+Art style: ${styleDesc}.
+Important: Generate ONLY visual artwork. No text, letters, or words in the image.`;
 
-  // PRIORIDAD 1: REPLICATE (NanoBanana / FLUX) - Calidad "Flux Difusion"
-  if (replicateConfig?.apiKey) {
-      try {
-          console.log('[Regen] Intentando generar con Replicate (FLUX)...')
-          const output = await fetch("https://api.replicate.com/v1/predictions", {
-            method: "POST",
-            headers: {
-              "Authorization": `Token ${replicateConfig.apiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              // Flux Schnell (Rápido y bueno)
-              version: "black-forest-labs/flux-schnell", 
-              input: { prompt: prompt, aspect_ratio: "1:1", output_quality: 90 }
-            }),
-          });
-          
-          if (output.ok) {
-             const json = await output.json();
-             // Replicate devuelve un prediction ID, hay que esperar el resultado (polling) o usar el output directo si es modelo rápido
-             // Para simplificar sin polling complejo en edge function, intentaremos usar si devuelve url directa o esperar un poco
-             // NOTA: Flux Schnell en Replicate suele ser muy rápido, pero la API es asíncrona.
-             // Si esto es complejo de implementar aquí, usaremos polling simple.
-             
-             // ...Implementación simplificada de polling...
-             let prediction = json;
-             let attempts = 0;
-             while (prediction.status !== "succeeded" && prediction.status !== "failed" && attempts < 10) {
-                await new Promise(r => setTimeout(r, 1000));
-                const statusRes = await fetch(prediction.urls.get, {
-                    headers: { "Authorization": `Token ${replicateConfig.apiKey}` }
-                });
-                prediction = await statusRes.json();
-                attempts++;
-             }
-             
-             if (prediction.status === "succeeded" && prediction.output) {
-                 newImageUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
-                 usedProvider = 'replicate';
-                 console.log('[Regen] Éxito con Replicate/Flux');
-             }
+  let imageBuffer: Buffer | null = null;
+  let successProvider = '';
+  const errors: string[] = [];
+  let mimeType = 'image/png';
+
+  // =================================================================================
+  // PRIORITY 1: GOOGLE GEMINI
+  // =================================================================================
+  const googleApiKey = process.env.GOOGLE_API_KEY;
+  if (googleApiKey) {
+      const geminiModels = ['gemini-2.5-flash-image', 'gemini-3-pro-image-preview'];
+      for (const model of geminiModels) {
+          if (imageBuffer) break;
+          try {
+              const response = await fetch(
+                  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+                  {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': googleApiKey },
+                      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                  }
+              );
+
+              if (response.ok) {
+                  const data = await response.json();
+                  const parts = data.candidates?.[0]?.content?.parts || [];
+                  for (const part of parts) {
+                      if (part.inlineData?.data) {
+                          imageBuffer = Buffer.from(part.inlineData.data, 'base64');
+                          successProvider = `Google Gemini (${model})`;
+                          if (part.inlineData.mimeType) mimeType = part.inlineData.mimeType;
+                          break;
+                      }
+                  }
+              } else {
+                  errors.push(`gemini-${model}: ${response.status}`);
+              }
+          } catch (e: any) {
+              errors.push(`gemini-${model}: ${e.message}`);
           }
-      } catch (e) {
-          console.error('[Regen] Error Replicate:', e)
       }
   }
 
-  // PRIORIDAD 2: OPENAI (DALL-E 3)
-  if (!newImageUrl && openaiConfig?.apiKey) {
+  // =================================================================================
+  // PRIORITY 2: COMET API (DALL-E 3)
+  // =================================================================================
+  const cometKey = process.env.COMET_API_KEY;
+  if (cometKey && !imageBuffer) {
       try {
-          console.log('[Regen] Intentando generar con DALL-E 3...')
-          const response = await fetch('https://api.openai.com/v1/images/generations', {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${openaiConfig.apiKey}`
-              },
-              body: JSON.stringify({
-                  model: "dall-e-3",
-                  prompt: prompt.substring(0, 1000),
-                  n: 1,
-                  size: "1024x1024",
-                  quality: "standard", // standard es más rápido y barato, hd es premium
-                  response_format: "url"
-              })
-          })
+           const response = await fetch('https://api.cometapi.com/v1/images/generations', {
+               method: 'POST',
+               headers: { 'Authorization': `Bearer ${cometKey}`, 'Content-Type': 'application/json' },
+               body: JSON.stringify({
+                   model: "dall-e-3",
+                   prompt: prompt.substring(0, 1000),
+                   n: 1,
+                   size: "1024x1024",
+                   response_format: "b64_json"
+               })
+           });
+
+           if (response.ok) {
+               const data = await response.json();
+               const b64 = data.data?.[0]?.b64_json;
+               if (b64) {
+                   imageBuffer = Buffer.from(b64, 'base64');
+                   successProvider = 'CometAPI (DALL-E 3)';
+                   mimeType = 'image/png';
+               }
+           } else {
+               errors.push(`comet: ${response.status}`);
+           }
+      } catch(e: any) {
+           errors.push(`comet: ${e.message}`);
+      }
+  }
+
+  // =================================================================================
+  // PRIORITY 3: CLOUDFLARE WORKERS AI
+  // =================================================================================
+  const cfToken = process.env.CLOUDFLARE_API_TOKEN;
+  const cfAccountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  
+  if (cfToken && cfAccountId && !imageBuffer) {
+      try {
+          const response = await fetch(
+              `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/ai/run/@cf/black-forest-labs/flux-1-schnell`,
+              {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfToken}` },
+                  body: JSON.stringify({ prompt: prompt.substring(0, 500), num_steps: 4 })
+              }
+          );
 
           if (response.ok) {
-              const data = await response.json()
-              if (data.data?.[0]?.url) {
-                  newImageUrl = data.data[0].url
-                  usedProvider = 'openai';
+              const data = await response.json();
+              const b64 = data.result?.image; 
+              if (b64) {
+                  imageBuffer = Buffer.from(b64, 'base64');
+                  successProvider = 'Cloudflare Workers AI';
+                  mimeType = 'image/png';
               }
-          }
-      } catch (e) {
-          console.error('[Regen] Error DALL-E 3:', e)
+           } else {
+              errors.push(`cloudflare: ${response.status}`);
+           }
+      } catch (e: any) {
+          errors.push(`cloudflare: ${e.message}`);
       }
   }
 
-  // PRIORIDAD 3: HUGGING FACE (SDXL)
-  if (!newImageUrl && huggingfaceConfig?.apiKey) {
+  // =================================================================================
+  // SAVE & RESPOND
+  // =================================================================================
+  if (imageBuffer) {
       try {
-           console.log('[Regen] Intentando generar con HuggingFace (SDXL)...')
-           const response = await fetch(
-            "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0",
-            {
-                headers: { Authorization: `Bearer ${huggingfaceConfig.apiKey}` },
-                method: "POST",
-                body: JSON.stringify({ inputs: prompt }),
-            }
-        );
-        if (response.ok) {
-            const blob = await response.blob();
-            // Necesitamos subir este blob o convertirlo a base64 para mostrarlo, 
-            // pero para DB necesitamos URL. Como no tenemos storage aquí fácil, 
-            // usaremos Pollinations como fallback de display si falla storage, 
-            // PERO el usuario pidió no usar Pollinations.
-            // Dado que no tenemos S3 configurado en este snippet, HF es difícil de persistir sin storage.
-            // Saltaremos HF por ahora si no hay storage service.
-            console.log('[Regen] HuggingFace generó blob, pero falta storage. Saltando.');
-        }
-      } catch (e) { console.error('Error HF', e)}
+          const base64 = imageBuffer.toString('base64');
+          const dataUrl = `data:${mimeType};base64,${base64}`;
+          
+          await prisma.chapter.update({ where: { id: chapterId }, data: { imageUrl: dataUrl } });
+          await prisma.user.update({ where: { id: userId }, data: { credits: { decrement: 1 } } });
+          
+          return NextResponse.json({ success: true, imageUrl: dataUrl, provider: successProvider });
+      } catch (e: any) {
+           return NextResponse.json({ error: 'Save failed' }, { status: 500 });
+      }
   }
 
-  // FALLBACK FINAL: Pollinations (SOLO SI NO HAY NADA MÁS Y EL USUARIO NO TIENE KEYS)
-  // El usuario dijo "no de pollinations".
-  // Pero si no generamos nada, la app se rompe.
-  // Usaremos un modelo MEJOR de Pollinations especificando 'flux' explícitamente y 'enhance=true'
-  if (!newImageUrl) {
-       return NextResponse.json({ 
-           error: 'No se pudo generar la imagen. Asegúrate de tener una API Key válida de Replicate o OpenAI configurada en Ajustes.' 
-       }, { status: 400 })
-  }
-
-  if (newImageUrl) {
-      // 6. Actualizar Capítulo
-      await prisma.chapter.update({
-          where: { id: chapterId },
-          data: { imageUrl: newImageUrl }
-      })
-      
-      // Descontar crédito
-      await prisma.user.update({ where: { id: userId }, data: { credits: { decrement: 1 } } })
-  }
-
-  return NextResponse.json({ success: true, imageUrl: newImageUrl })
+  return NextResponse.json({ error: 'No se pudo generar imagen.', details: errors }, { status: 200 });
 }

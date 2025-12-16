@@ -1,0 +1,17 @@
+=== SYSTEM AUDIT ===
+Found 3 Users:
+ - john@doe.com (cmj3rykcr00005ajwgf8ye1ya)
+ - eddyflores100@gmail.com (cmj3s11ls00005aug8g97dgvy)
+ - edgar.flores.guerra.2011@gmail.com (cmj4wakut00005a44fwc80tbg)
+
+Last 5 Books:
+ - [cmj6hc65100015awwahk6b002] "El Futuro del Trabajo: Cómo la Inteligencia Artificial está Transformando las Profesiones" (User: cmj4wakut00005a44fwc80tbg)
+   Cover: BASE64 (1060898 chars)
+ - [cmj7h8dol00055ah8odfvnjap] "Teletrabajo y Salud Mental: Estrategias para un Equilibrio Sostenible" (User: cmj4wakut00005a44fwc80tbg)
+   Cover: /api/images/chapter_cmj6hd1wn00035awwy9bm3hmp_1765851938174.png
+ - [cmj7d0ogn00015ax0jsqge4wa] "La Tierra que nos duele: Cómo el cambio climático afecta nuestra salud mental" (User: cmj4wakut00005a44fwc80tbg)
+   Cover: BASE64 (1153570 chars)
+ - [cmj6eyuc300015a9057mmuqap] "20 Recetas Veganas Irresistibles: Delicias para Todos los Días" (User: cmj4wakut00005a44fwc80tbg)
+   Cover: https://image.pollinations.ai/prompt/Book%20cover%20for%20%2220%20Recetas%20Veganas%20Irresistibles%
+ - [cmj6b8hwv00015acogq47u2ln] "Sabor y Calor: Recetas para el Invierno" (User: cmj4wakut00005a44fwc80tbg)
+   Cover: https://image.pollinations.ai/prompt/Book%20cover%20for%20%22Sabor%20y%20Calor%3A%20Recetas%20para%2

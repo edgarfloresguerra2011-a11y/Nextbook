@@ -13,7 +13,7 @@ export default function HomePage() {
             <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               Nexbook-AI
             </span>
-            <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full font-semibold">v2.8.0</span>
+            <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full font-semibold">v2.9.0</span>
           </div>
           <nav className="flex items-center gap-4">
             <Link href="/auth/login">

@@ -55,6 +55,10 @@ model Book {
   exportSettings ExportSettings?
   integrations  MarketplaceIntegration[]
 
+  // Visuals
+  theme         String   @default("swiss_master")
+  layout        String   @default("standard")
+
   @@index([userId])
   @@map("books")
 }

@@ -91,7 +91,7 @@ export async function GET(
     })
 
     // Return as downloadable file
-    return new NextResponse(buffer, {
+    return new NextResponse(buffer as any, {
       headers: {
         'Content-Type': 'application/epub+zip',
         'Content-Disposition': `attachment; filename="${book.title.replace(/[^a-z0-9]/gi, '_')}.epub"`,

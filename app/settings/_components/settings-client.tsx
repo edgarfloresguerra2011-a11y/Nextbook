@@ -398,7 +398,7 @@ export default function SettingsClient({ providers: initialProviders, user }: Se
             <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               Nexbook-AI
             </span>
-            <Badge variant="secondary" className="ml-2 bg-purple-100 text-purple-700">v2.7</Badge>
+            <Badge variant="secondary" className="ml-2 bg-purple-100 text-purple-700">v2.9.0</Badge>
           </Link>
         </div>
       </header>
@@ -467,6 +467,7 @@ export default function SettingsClient({ providers: initialProviders, user }: Se
                             ref={fileInputRef} 
                             className="hidden" 
                             accept="image/*" 
+                            aria-label="Subir foto de perfil"
                             onChange={handleFileChange} 
                         />
                    </div>
