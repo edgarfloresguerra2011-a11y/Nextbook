@@ -1,4 +1,3 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 require('dotenv').config({ path: '.env' });
 
 async function listModels() {
@@ -17,7 +16,11 @@ async function listModels() {
       if (data.models) {
           console.log("\n✅ Available Models:");
           data.models.forEach(m => {
-              console.log(`- ${m.name} (${m.supportedGenerationMethods.join(', ')})`);
+              if (m.name.includes('image') || m.name.includes('gen') || m.name.includes('veo')) {
+                   console.log(`MODEL: ${m.name}`);
+                   console.log(`METHODS: ${m.supportedGenerationMethods.join(', ')}`);
+                   console.log('---');
+              }
           });
       } else {
           console.log("❌ No models found or error:", data);

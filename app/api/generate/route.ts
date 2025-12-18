@@ -2,37 +2,69 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { prisma } from '@/lib/db'
+import { generateTextCore as generateText } from '@/lib/ai-core'
 
 export const dynamic = 'force-dynamic'
 
-// --- 1. Generación de IMÁGENES (Prioriza APIs configuradas) ---
-async function generateImage(prompt: string, apiKey?: string, replicateKey?: string): Promise<string | null> {
-  const enhancedPrompt = prompt + ", professional, high quality, detailed, 8k resolution, award winning, photorealistic, cinematic lighting, no text"
+async function generateImage(prompt: string, apiKey?: string, replicateKey?: string, replicateModel?: string, deepseekKey?: string): Promise<string | null> {
+  const enhancedPrompt = prompt + ", professional, high quality, detailed, 8k resolution, award winning, photorealistic, cinematic lighting, no text";
   
-  // FALLBACK: Use env vars if DB config is missing
+  // APIs Config
   const effectiveReplicateKey = replicateKey || process.env.REPLICATE_API_TOKEN;
   const effectiveOpenAIKey = apiKey || process.env.OPENAI_API_KEY;
-  const effectiveGoogleKey = process.env.GOOGLE_API_KEY;
+  const effectiveDeepSeekKey = deepseekKey || process.env.DEEPSEEK_API_KEY;
 
-  // 1. Replicate (Flux/NanoBanana) - Highest Quality
+  // 0. DEEPSEEK (STRICT PRIORITY as requested)
+  // User explicitly wants DeepSeek for images.
+  if (effectiveDeepSeekKey) {
+      try {
+           console.log('🎨 Attempting DeepSeek Image Generation (Priority)...');
+           const response = await fetch('https://api.deepseek.com/v1/images/generations', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${effectiveDeepSeekKey}`
+                },
+                body: JSON.stringify({
+                    prompt: enhancedPrompt,
+                    n: 1,
+                    size: "1024x1024",
+                    response_format: "url"
+                })
+           });
+           
+           if (response.ok) {
+               const data = await response.json();
+               if (data.data?.[0]?.url) {
+                   console.log('✅ DeepSeek Image generated successfully');
+                   return data.data[0].url;
+               }
+           } else {
+               console.warn(`⚠️ DeepSeek Image Failed: ${response.status}. Trying next provider...`);
+           }
+      } catch (e) { console.error('DeepSeek Image Error', e) }
+  }
+
+  // 1. Replicate (Flux/Hunyuan/etc) - Highest Quality
   if (effectiveReplicateKey) {
       try {
-          console.log('🎨 Attempting Replicate (FLUX) generation...')
-          const output = await fetch("https://api.replicate.com/v1/predictions", {
+          const modelId = replicateModel || "black-forest-labs/flux-schnell";
+          console.log(`🎨 Attempting Replicate (${modelId}) generation...`)
+          
+          const output = await fetch(`https://api.replicate.com/v1/models/${modelId}/predictions`, {
             method: "POST",
             headers: {
               "Authorization": `Token ${effectiveReplicateKey}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              version: "black-forest-labs/flux-schnell", 
-              input: { prompt: enhancedPrompt, aspect_ratio: "1:1", output_quality: 90 }
+              input: { prompt: enhancedPrompt }
             }),
           });
           
           if (output.ok) {
              const json = await output.json();
-             // Simple polling logic for generate route
+             // Polling logic
              let prediction = json;
              let attempts = 0;
              while (prediction.status !== "succeeded" && prediction.status !== "failed" && attempts < 10) {
@@ -89,23 +121,14 @@ async function generateImage(prompt: string, apiKey?: string, replicateKey?: str
     }
   }
 
-  // 3. Fallback to Google/Gemini (Experimental Image Gen) if available
-  if (effectiveGoogleKey) {
-       try {
-           console.log('🎨 Attempting Gemini Image Generation...');
-           // Usamos un modelo que soporte imagen o placeholder si no
-           // Nota: La API v1beta de imagen es distinta, aquí usamos un placeholder seguro si todo falla
-           // para que el usuario NO reciba error, sino una imagen por defecto, o intentamos una llamada real si conocemos el endpoint.
-           // Por estabilidad, retornamos una imagen placeholder de alta calidad aleatoria si fallan las IAs premium.
-       } catch (e) {}
-  }
+  // REMOVED Vertex/Gemini fallback as requested by user ("No vertex call")
 
-  // LAST RESORT: Return a meaningful placeholder instead of NULL to prevent crash
-  console.warn('⚠️ All image providers failed. Returning placeholder.')
+  // LAST RESORT
+  console.warn('⚠️ All image providers failed. Returning placeholder (No Vertex used).')
   return `https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&q=80&w=1000`; 
 }
 
-// ... (Generate Text function remains same) ...
+// ... 
 
 // --- 3. Main Handler ---
 export async function POST(request: NextRequest) {
@@ -126,33 +149,52 @@ export async function POST(request: NextRequest) {
     // --- SELECCIÓN IMAGEN ---
     const imageConfig = providers.find((p: any) => p.provider === 'openai')
     const replicateConfig = providers.find((p: any) => p.provider === 'replicate')
+    const deepseekConfig = providers.find((p: any) => p.provider === 'deepseek')
 
-    // Find Text Config... (Simplified logic for brevity in replacement)
-    let requestedProvider = body.textProvider
-    if (requestedProvider === 'default') requestedProvider = null
-    let textConfig = requestedProvider ? providers.find((p: any) => p.provider === requestedProvider) : null
-    
-    // Fallback logic if no DB config found
+    // 0. LOAD MASTER SECRETS FROM FILE
+    let masterSecrets: any = {};
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const secretsPath = path.join(process.cwd(), '.secrets', 'apis.json');
+        if (fs.existsSync(secretsPath)) {
+            masterSecrets = JSON.parse(fs.readFileSync(secretsPath, 'utf8'));
+        }
+    } catch (e) {}
+
+    // 1. MASTER SECRETS PRIORITY (Environment Variables or File)
+    let textConfig = null;
+    const dsKey = process.env.DEEPSEEK_API_KEY || masterSecrets.DEEPSEEK_API_KEY;
+    const orKey = process.env.OPENROUTER_API_KEY || masterSecrets.OPENROUTER_API_KEY;
+    const gKey = process.env.GOOGLE_API_KEY || masterSecrets.GOOGLE_API_KEY;
+    const oKey = process.env.OPENAI_API_KEY || masterSecrets.OPENAI_API_KEY;
+
+    if (dsKey) {
+        textConfig = { provider: 'deepseek', apiKey: dsKey, modelName: process.env.DEEPSEEK_MODEL || 'deepseek-chat' }
+    } else if (orKey) {
+        textConfig = { provider: 'openrouter', apiKey: orKey, modelName: 'google/gemini-2.0-flash-exp:free' }
+    } else if (gKey) {
+        textConfig = { provider: 'google', apiKey: gKey, modelName: 'gemini-1.5-flash' }
+    } else if (oKey) {
+        textConfig = { provider: 'openai', apiKey: oKey, modelName: 'gpt-4o-mini' }
+    }
+
+    // 2. FALLBACK TO DB if no Master Secrets found
     if (!textConfig) {
-        const priorityOrder = ['openai', 'anthropic', 'google', 'openrouter', 'groq']
-        for (const pName of priorityOrder) {
-            textConfig = providers.find((p: any) => p.provider === pName)
-            if (textConfig) break;
+        // Find Text Config in DB
+        let requestedProvider = body.textProvider
+        if (requestedProvider === 'default') requestedProvider = null
+        textConfig = requestedProvider ? providers.find((p: any) => p.provider === requestedProvider) : null
+        
+        if (!textConfig) {
+            const priorityOrder = ['deepseek', 'qwen', 'zhipu', 'yi', 'openai', 'anthropic', 'google', 'openrouter', 'groq']
+            for (const pName of priorityOrder) {
+                textConfig = providers.find((p: any) => p.provider === pName)
+                if (textConfig) break;
+            }
         }
     }
 
-    // SYSTEM FALLBACK: Use Environment Variables if DB is empty
-    if (!textConfig) {
-        if (process.env.OPENROUTER_API_KEY) {
-            textConfig = { provider: 'openrouter', apiKey: process.env.OPENROUTER_API_KEY, modelName: 'google/gemini-2.0-flash-exp:free' }
-        } else if (process.env.GOOGLE_API_KEY) {
-             textConfig = { provider: 'google', apiKey: process.env.GOOGLE_API_KEY, modelName: 'gemini-1.5-flash' }
-        } else if (process.env.OPENAI_API_KEY) {
-            textConfig = { provider: 'openai', apiKey: process.env.OPENAI_API_KEY, modelName: 'gpt-4o-mini' }
-        } else if (process.env.ANTHROPIC_API_KEY) {
-            textConfig = { provider: 'anthropic', apiKey: process.env.ANTHROPIC_API_KEY, modelName: 'claude-3-haiku-20240307' }
-        }
-    }
 
     const activeTextConfig = textConfig;
     if (!activeTextConfig) {
@@ -170,11 +212,26 @@ export async function POST(request: NextRequest) {
         try {
           send({ status: 'progress', message: `Iniciando generación con ${activeTextConfig.provider}...` })
 
-          // Structure Generation (Same as before)
-          const structurePrompt = `Genera un índice para un libro titulado "${title}" (${genre}). Descripción: ${description}. Capítulos: ${numChapters}. Retorna SOLO un JSON válido: {"chapters": [{ "chapterNumber": 1, "title": "...", "description": "..." }]}`
+          // Structure Generation (with SEO)
+          const structurePrompt = `Genera un índice para un libro titulado "${title}" (${genre}). 
+          Descripción del usuario: ${description}. 
+          Capítulos: ${numChapters}. 
+          
+          TAREA:
+          1. Crea una estructura de capítulos atractiva.
+          2. Genera 5-10 Palabras Clave SEO de alto tráfico para este tema.
+          3. Escribe una Meta Descripción SEO optimizada (máx 160 caracteres).
+          
+          Retorna SOLO un JSON válido: 
+          {
+            "chapters": [{ "number": 1, "title": "...", "description": "Breve descripción de la escena o contenido visual del capítulo" }],
+            "seoKeywords": ["keyword1", "keyword2"],
+            "seoDescription": "Meta description..."
+          }`
+          
           let structureJsonStr = await generateText(
             structurePrompt, 
-            'Eres un arquitecto editorial experto. Responde solo JSON válido sin markdown.', 
+            'Eres un arquitecto editorial y experto en SEO. Responde solo JSON válido sin markdown.', 
             { provider: activeTextConfig.provider, apiKey: activeTextConfig.apiKey, model: activeTextConfig.modelName || undefined }
           )
           structureJsonStr = structureJsonStr.replace(/```json/g, '').replace(/```/g, '').trim()
@@ -183,11 +240,31 @@ export async function POST(request: NextRequest) {
 
           // Cover
           send({ status: 'progress', message: 'Generando portada...' })
-          const coverUrl = await generateImage(`Book cover for "${title}", ${genre}, minimal, professional`, imageConfig?.apiKey, replicateConfig?.apiKey)
+          const coverUrl = await generateImage(
+              `Photorealistic 3D product shot of a hardcover book standing on a table. Title: "${title}". Theme: ${genre}. Professional photography, cinematic lighting`, 
+              imageConfig?.apiKey || undefined, 
+              replicateConfig?.apiKey || undefined, 
+              replicateConfig?.modelName || undefined,
+              deepseekConfig?.apiKey || undefined
+          )
+
+          // Prepare SEO Data
+          const seoKeywordsStr = structure.seoKeywords && Array.isArray(structure.seoKeywords) ? structure.seoKeywords.join(', ') : '';
+          const seoDesc = structure.seoDescription || '';
 
           // Create Book
           const book = await prisma.book.create({
-            data: { userId, title, genre, description, coverImageUrl: coverUrl, status: 'generating' }
+            data: { 
+                userId, 
+                title, 
+                genre, 
+                category: genre, // Required in V2 schema
+                description, 
+                seoKeywords: seoKeywordsStr, 
+                seoDescription: seoDesc,
+                coverImageUrl: coverUrl, 
+                status: 'generating' 
+            }
           })
 
           // Chapters
@@ -196,7 +273,7 @@ export async function POST(request: NextRequest) {
              send({ status: 'progress', message: `Escribiendo ${chap.title}...` })
              
              let content = await generateText(
-               `Escribe el capítulo ${chap.chapterNumber}: "${chap.title}" para el libro "${title}" (${genre}).
+               `Escribe el capítulo ${chap.number}: "${chap.title}" para el libro "${title}" (${genre}).
                Instrucciones:
                - Texto corrido novelesco de altísima calidad.
                - SIN markdown, sin negritas, sin listas.
@@ -210,12 +287,20 @@ export async function POST(request: NextRequest) {
              // Eliminar cualquier residuo de markdown que la IA haya ignorado
              content = content.replace(/\*\*/g, '').replace(/###/g, '').replace(/^#+\s/gm, '').replace(/^\s*[\-\*]\s+/gm, '');
 
-             const chapImg = await generateImage(`Illustration for "${chap.title}", ${genre}`, imageConfig?.apiKey, replicateConfig?.apiKey)
+             // --- CHAPTER IMAGE (Context Aware) ---
+             const chapImgPrompt = `Detailed illustration for chapter "${chap.title}". Context: ${chap.description || 'Key scene from the chapter'}. Book Theme: ${genre}. High quality, detailed art, cinematic style, no text.`;
+             const chapImg = await generateImage(
+                 chapImgPrompt, 
+                 imageConfig?.apiKey || undefined, 
+                 replicateConfig?.apiKey || undefined, 
+                 replicateConfig?.modelName || undefined,
+                 deepseekConfig?.apiKey || undefined
+             )
 
              await prisma.chapter.create({
                data: {
                  bookId: book.id,
-                 chapterNumber: chap.chapterNumber,
+                 number: chap.number,
                  title: chap.title,
                  content: content,
                  imageUrl: chapImg

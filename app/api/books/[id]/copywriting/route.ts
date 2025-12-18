@@ -75,11 +75,12 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user) {
+    const s = session as any;
+    if (!s?.user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const userId = (session.user as any)?.id
+    const userId = s.user.id
     const bookId = params.id
 
     const book = await prisma.book.findUnique({
@@ -111,6 +112,13 @@ export async function POST(
     const suggestedPrice = (wordCount * 0.003).toFixed(2)
 
     // === GENERAL COPYWRITING (LAUNCH KIT) ===
+    const b = book as any; 
+    const seoContext = `
+    SEO CORE DATA:
+    - Keywords Base: ${b.seoKeywords || 'Identificar las mejores'}
+    - Meta Context: ${b.seoDescription || ''}
+    `;
+
     const generalPrompt = `Eres un experto en marketing digital y lanzamientos de libros best-seller.
 
 Genera un KIT DE LANZAMIENTO COMPLETO para este libro:
@@ -119,6 +127,7 @@ Genera un KIT DE LANZAMIENTO COMPLETO para este libro:
 - Descripción: ${book.description}
 - Capítulos: ${book.chapters?.length || 0}
 - Palabras: ${wordCount}
+${seoContext}
 
 Genera en formato JSON estricto:
 {
@@ -126,7 +135,7 @@ Genera en formato JSON estricto:
   "subtitle": "Subtítulo PODEROSO que vende de 120 caracteres",
   "description": "Descripción COMPLETA de 350-450 palabras muy persuasiva y profesional que explique los beneficios, transformación, y valor único del libro",
   "shortDescription": "Resumen impactante de 140-150 caracteres para meta description",
-  "keywords": ["15 palabras clave estratégicas de alta búsqueda"],
+  "keywords": ["15 palabras clave estratégicas de alta búsqueda (Incluir las Base si son relevantes)"],
   "categories": ["5-7 categorías precisas de Amazon KDP"],
   "emailSubject": "Asunto de Email IRRESISTIBLE para lista de espera (alta tasa de apertura)",
   "emailBody": "Correo de venta persuasivo (200 palabras) usando el framework AIDA (Atención, Interés, Deseo, Acción).",
@@ -194,6 +203,8 @@ IMPORTANTE:
 INSTRUCCIONES ESPECÍFICAS PARA ${marketplace.name}:
 ${marketplace.focus}
 
+${seoContext}
+
 Genera copywriting comercial EXTENSO para:
 - Título: ${book.title}
 - Género: ${book.genre}
@@ -210,7 +221,7 @@ Formato JSON:
   "bulletPoints": ["7-10 puntos de venta poderosos adaptados a ${marketplace.name}"],
   "targetAudience": "Perfil detallado de audiencia objetivo de ${marketplace.name}",
   "keywords": ["7-10 palabras clave optimizadas para búsquedas en ${marketplace.name}"],
-  "categories": ["3-5 categorías apropiadas para ${marketplace.name}"]
+  "categories": ["3-5 categorías precisas"]
 }
 
 CRÍTICO: La descripción debe tener 250-300 palabras reales adaptadas al tono de ${marketplace.name}. Nada de "---".`

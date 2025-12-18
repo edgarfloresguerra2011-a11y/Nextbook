@@ -9,25 +9,69 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   console.log(`[RegenCover] 🟢 Request for Book ID: ${params.id}`);
   
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
+  
+  // Cast session to any to avoid TS errors with custom user properties during rapid dev
+  const s = session as any;
+
+  if (!s?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized', success: false }, { status: 401 });
   }
 
   const bookId = params.id;
-  const userId = (session.user as any).id;
+  const userId = s.user.id;
 
   const [book, user] = await Promise.all([
       prisma.book.findUnique({ where: { id: bookId } }),
-      prisma.user.findUnique({ where: { id: userId } })
+      prisma.user.findUnique({ where: { id: userId }, select: { credits: true, authorName: true, coverStyle: true, email: true } })
   ]);
 
   if (!book) return NextResponse.json({ error: 'Book not found', success: false }, { status: 404 });
 
-  const prompt = `Create a stunning, professional book cover illustration for "${book.title}". 
-Genre: ${book.genre}. 
-Theme: ${book.description?.substring(0, 100) || 'Captivating story'}. 
-Style: Cinematic, award-winning design, 8k quality, dramatic lighting, visually striking artwork. 
-Important: Generate ONLY the visual artwork. No text, no letters, no words in the image.`;
+  // FETCH API KEYS FROM DB
+  const providers = await prisma.providerConfig.findMany({
+      where: { userId, isActive: true }
+  });
+  
+  const deepseekKey = providers.find((p: any) => p.provider === 'deepseek')?.apiKey || process.env.DEEPSEEK_API_KEY;
+  const replicateKey = providers.find((p: any) => p.provider === 'replicate')?.apiKey || process.env.REPLICATE_API_TOKEN;
+  const openAiKey = providers.find((p: any) => p.provider === 'openai')?.apiKey || process.env.OPENAI_API_KEY;
+
+  // REGENERATION LIMIT CHECK
+  if ((book.coverRegenCount || 0) >= 3) {
+      return NextResponse.json({ 
+          error: 'Has alcanzado el límite de 3 regeneraciones para la portada.',
+          limitReached: true
+      }, { status: 403 });
+  }
+
+  const body = await req.json().catch(() => ({}));
+  console.log('[RegenCover] Body:', body);
+  console.log('[RegenCover] User Data:', user);
+  const style = body.style || user?.coverStyle || 'modern_light';
+
+  const bgStyles: Record<string, string> = {
+      'modern_light': 'clean, bright modern studio background, soft lighting',
+      'studio_white': 'on a seamless white background, high key photography',
+      'minimal_grey': 'on a minimal soft grey surface, elegant',
+      'wooden_table': 'on a light oak wooden table, cozy atmosphere',
+      'soft_gradient': 'with a soft pastel color gradient background',
+      'geometric_abstract': 'with a subtle light geometric abstract background',
+      'natural_light': 'bathed in soft natural window light, lifestyle photography',
+      'clean_tech': 'on a clean white surface with subtle blue tech accents',
+      'coffee_shop_blur': 'on a table in a blurred modern coffee shop background',
+      'marble_surface': 'on a luxurious white marble surface'
+  };
+
+  const bgPrompt = bgStyles[style] || bgStyles['modern_light'];
+  const authorContext = user?.authorName ? `by author "${user.authorName}"` : '';
+
+  const prompt = `A straight-on, front-facing view of a premium book cover. 
+  The Title MUST be clearly written as: "${book.title}".
+  ${authorContext ? `The Author Name MUST be written as: "${user.authorName}".` : ''}
+  Typography should be: Large, Bold, Cinematic, and Legible.
+  Visual Theme: ${book.description?.substring(0, 100) || book.genre}. 
+  Background/Style: ${bgPrompt}, ${book.genre} aesthetics. 
+  Render quality: 8k resolution, photorealistic texture, professional graphic design, masterpiece.`;
 
   let imageBuffer: Buffer | null = null;
   let successProvider = '';
@@ -35,141 +79,113 @@ Important: Generate ONLY the visual artwork. No text, no letters, no words in th
   let mimeType = 'image/png';
 
   // =================================================================================
-  // PRIORITY 1: GOOGLE GEMINI (Highest Quality Available)
+  // UNIFIED PROVIDER LOGIC (DEEPSEEK PRIORITY -> REPLICATE -> OPENAI)
   // =================================================================================
-  const googleApiKey = process.env.GOOGLE_API_KEY;
-  if (googleApiKey) {
-      // Try models in order of quality/recency
-      const geminiModels = ['gemini-2.5-flash-image', 'gemini-3-pro-image-preview'];
-      
-      for (const model of geminiModels) {
-          if (imageBuffer) break;
-          console.log(`[RegenCover] 🍌 Trying Gemini Model: ${model}...`);
-          
-          try {
-              const response = await fetch(
-                  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-                  {
-                      method: 'POST',
-                      headers: { 
-                          'Content-Type': 'application/json',
-                          'x-goog-api-key': googleApiKey
-                      },
-                      body: JSON.stringify({
-                          contents: [{ parts: [{ text: prompt }] }]
-                      })
-                  }
-              );
-
-              if (response.ok) {
-                  const data = await response.json();
-                  // Gemini returns base64 inside candidates[0].content.parts[0].inlineData.data
-                  const parts = data.candidates?.[0]?.content?.parts || [];
-                  for (const part of parts) {
-                      if (part.inlineData?.data) {
-                          imageBuffer = Buffer.from(part.inlineData.data, 'base64');
-                          successProvider = `Google Gemini (${model})`;
-                          if (part.inlineData.mimeType) mimeType = part.inlineData.mimeType;
-                          else mimeType = 'image/jpeg'; // Usually JPEG
-                          break;
-                      }
-                  }
-              } else {
-                  // Log but continue to next model/provider
-                  const errText = await response.text();
-                  console.log(`[RegenCover] Gemini ${model} error: ${response.status} - ${errText.substring(0,100)}`);
-                  errors.push(`gemini-${model}: ${response.status}`);
-              }
-          } catch (e: any) {
-              console.error(`[RegenCover] Gemini ${model} exception:`, e.message);
-              errors.push(`gemini-${model}: ${e.message}`);
-          }
-      }
-  }
-
-  // =================================================================================
-  // PRIORITY 2: COMET API (DALL-E 3) - Premium Quality
-  // =================================================================================
-  const cometKey = process.env.COMET_API_KEY;
-  if (cometKey && !imageBuffer) {
-      console.log('[RegenCover] ☄️ Trying CometAPI (DALL-E 3)...');
+  
+  // 1. DEEPSEEK (Priority)
+  if (!imageBuffer && deepseekKey) {
       try {
-           const response = await fetch('https://api.cometapi.com/v1/images/generations', {
-               method: 'POST',
-               headers: {
-                   'Authorization': `Bearer ${cometKey}`,
-                   'Content-Type': 'application/json'
-               },
-               body: JSON.stringify({
-                   model: "dall-e-3",
-                   prompt: prompt.substring(0, 1000), // DALL-E limit
-                   n: 1,
-                   size: "1024x1024",
-                   response_format: "b64_json"
-               })
+          console.log('🎨 [RegenCover] Attempting DeepSeek Image...');
+          const response = await fetch('https://api.deepseek.com/v1/images/generations', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${deepseekKey}`
+                },
+                body: JSON.stringify({
+                    prompt: prompt + ", professional, high quality, no text",
+                    n: 1,
+                    size: "1024x1024",
+                    response_format: "b64_json"
+                })
            });
-
+           
            if (response.ok) {
                const data = await response.json();
                const b64 = data.data?.[0]?.b64_json;
                if (b64) {
                    imageBuffer = Buffer.from(b64, 'base64');
-                   successProvider = 'CometAPI (DALL-E 3)';
-                   mimeType = 'image/png';
+                   successProvider = 'DeepSeek Image';
                }
            } else {
-               const err = await response.text();
-               console.log(`[RegenCover] CometAPI error: ${err.substring(0,100)}`);
-               errors.push(`comet: ${response.status}`);
+               console.warn(`[RegenCover] DeepSeek Failed: ${response.status}`);
            }
-      } catch(e: any) {
-           errors.push(`comet: ${e.message}`);
-      }
+      } catch (e: any) { console.error('DeepSeek Error:', e.message); }
   }
 
-  // =================================================================================
-  // PRIORITY 3: CLOUDFLARE WORKERS AI (Fallback)
-  // =================================================================================
-  const cfToken = process.env.CLOUDFLARE_API_TOKEN;
-  const cfAccountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  
-  if (cfToken && cfAccountId && !imageBuffer) {
-      console.log('[RegenCover] ☁️ Trying Cloudflare Workers AI (Fallback)...');
+  // 2. REPLICATE (Flux/Hunyuan)
+  if (!imageBuffer && replicateKey) {
       try {
-          const modelId = '@cf/black-forest-labs/flux-1-schnell';
-          const response = await fetch(
-              `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/ai/run/${modelId}`,
-              {
-                  method: 'POST',
-                  headers: { 
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${cfToken}`
-                  },
-                  body: JSON.stringify({
-                      prompt: prompt.substring(0, 500),
-                      num_steps: 8 // Higher steps for better quality if possible
-                  })
-              }
-          );
+          console.log('🎨 [RegenCover] Attempting Replicate...');
+          const modelId = "black-forest-labs/flux-schnell";
+          const output = await fetch(`https://api.replicate.com/v1/models/${modelId}/predictions`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Token ${replicateKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              input: { prompt: prompt, disable_safety_checker: true }
+            }),
+          });
+          
+          if (output.ok) {
+             const json = await output.json();
+             let prediction = json;
+             let attempts = 0;
+             while (prediction.status !== "succeeded" && prediction.status !== "failed" && attempts < 10) {
+                await new Promise(r => setTimeout(r, 1500));
+                const statusRes = await fetch(prediction.urls.get, {
+                    headers: { "Authorization": `Token ${replicateKey}` }
+                });
+                prediction = await statusRes.json();
+                attempts++;
+             }
+             
+             if (prediction.status === "succeeded" && prediction.output) {
+                 const url = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+                 const imgRes = await fetch(url);
+                 const arrayBuf = await imgRes.arrayBuffer();
+                 imageBuffer = Buffer.from(arrayBuf);
+                 successProvider = 'Replicate (Flux)';
+                 mimeType = 'image/webp';
+             }
+          }
+      } catch(e: any) { console.error('Replicate Error:', e.message); errors.push(`replicate: ${e.message}`); }
+  }
 
-          if (response.ok) {
-              const data = await response.json();
-              const b64 = data.result?.image; // FIXED: Extract from JSON
+  // 3. OPENAI (DALL-E 3)
+  if (!imageBuffer && openAiKey) {
+      try {
+          console.log('🎨 [RegenCover] Attempting DALL-E 3...');
+          const res = await fetch('https://api.openai.com/v1/images/generations', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${openAiKey}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  model: "dall-e-3",
+                  prompt: prompt,
+                  n: 1,
+                  size: "1024x1024",
+                  response_format: "b64_json", 
+                  quality: "standard"
+              })
+          });
+          if (res.ok) {
+              const x = await res.json();
+              const b64 = x.data?.[0]?.b64_json;
               if (b64) {
                   imageBuffer = Buffer.from(b64, 'base64');
-                  successProvider = 'Cloudflare Workers AI (FLUX)';
+                  successProvider = 'OpenAI (DALL-E 3)';
                   mimeType = 'image/png';
-              } else {
-                  errors.push('cloudflare: no image in result');
               }
           } else {
-              const errText = await response.text();
-              errors.push(`cloudflare: ${response.status}`);
+              errors.push(`openai: ${res.status}`);
           }
-      } catch (e: any) {
-          errors.push(`cloudflare: ${e.message}`);
-      }
+      } catch (e: any) { errors.push(`openai: ${e.message}`); }
   }
+
+  // 4. FAL/COMET Fallback (Optional, keeps existing logic if desired, but replacing previous blocks fully)
+
 
   // =================================================================================
   // SAVE & RESPOND (Using Base64 directly for reliability)
@@ -184,7 +200,7 @@ Important: Generate ONLY the visual artwork. No text, no letters, no words in th
 
           await prisma.book.update({ 
               where: { id: bookId }, 
-              data: { coverImageUrl: dataUrl } 
+              data: { coverImageUrl: dataUrl, coverRegenCount: { increment: 1 } } 
           });
           
           // Deduct credits

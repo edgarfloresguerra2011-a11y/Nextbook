@@ -152,57 +152,8 @@ export function GeneratorClient({ user }: GeneratorClientProps) {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="textProvider">Text Generation AI</Label>
-                <Select
-                  value={formData.textProvider}
-                  onValueChange={(value) => setFormData({ ...formData, textProvider: value })}
-                  disabled={isGenerating}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select text AI provider" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="default">Auto (Best Available)</SelectItem>
-                    <SelectItem value="openai">OpenAI</SelectItem>
-                    <SelectItem value="anthropic">Anthropic Claude</SelectItem>
-                    <SelectItem value="google">Google Gemini</SelectItem>
-                    <SelectItem value="openrouter">OpenRouter</SelectItem>
-                    <SelectItem value="groq">Groq (Ultra Fast)</SelectItem>
-                    <SelectItem value="mistral">Mistral AI</SelectItem>
-                    <SelectItem value="deepseek">DeepSeek</SelectItem>
-                    <SelectItem value="perplexity">Perplexity</SelectItem>
-                    <SelectItem value="together">Together AI</SelectItem>
-                    <SelectItem value="fireworks">Fireworks AI</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500">
-                  Requiere configurar API Keys en Settings
-                </p>
-              </div>
+            {/* Provider selection removed - system handles it automatically via secrets/db */}
 
-              <div className="space-y-2">
-                <Label htmlFor="imageProvider">Image Generation AI</Label>
-                <Select
-                  value={formData.imageProvider}
-                  onValueChange={(value) => setFormData({ ...formData, imageProvider: value })}
-                  disabled={isGenerating}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select image AI provider" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="default">Por Defecto (OpenAI/Pollinations)</SelectItem>
-                    <SelectItem value="openai">OpenAI DALL-E (Your Key)</SelectItem>
-                    <SelectItem value="stability">Stability AI (Your Key)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500">
-                  High-quality illustration per chapter
-                </p>
-              </div>
-            </div>
 
             <div className="space-y-2">
               <Label htmlFor="numChapters">Number of Chapters</Label>

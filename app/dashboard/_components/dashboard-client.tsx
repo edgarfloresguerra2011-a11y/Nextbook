@@ -1,7 +1,6 @@
 'use client'
-// Rebuild trigger
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -31,6 +30,271 @@ type DashboardClientProps = {
   user: any
 }
 
+const GeneratingBookOverlay = ({ book, onDelete }: { book: any, onDelete: () => void }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [progress, setProgress] = useState(0)
+  const [timeLeft, setTimeLeft] = useState<string>('Calculando...')
+  const [quote, setQuote] = useState('')
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    
+    let w = canvas.width = canvas.parentElement?.clientWidth || 300
+    let h = canvas.height = canvas.parentElement?.clientHeight || 400
+    
+    // "Cotton Candy" Particles
+    const particles: any[] = []
+    const particleCount = 60
+    
+    for (let i = 0; i < particleCount; i++) {
+        particles.push({ 
+            x: Math.random() * w, 
+            y: Math.random() * h, 
+            vx: (Math.random() - 0.5) * 0.5, 
+            vy: (Math.random() - 0.5) * 0.5, 
+            size: Math.random() * 3 + 1,
+            color: `hsl(${Math.random() * 60 + 200}, 100%, 70%)` // Blue-Cyan-Purple nuances
+        })
+    }
+    
+    let mouse = { x: w/2, y: h/2, active: false }
+    let angle = 0; 
+    let gatheredCount = 0;
+    let dispersing = false;
+    
+    const handleMouseMove = (e: MouseEvent) => { 
+        const rect = canvas.getBoundingClientRect(); 
+        mouse.x = e.clientX - rect.left; 
+        mouse.y = e.clientY - rect.top; 
+        if (!dispersing) mouse.active = true;
+    }
+
+    const handleMouseLeave = () => { 
+        mouse.active = false; 
+        dispersing = true;
+        setTimeout(() => dispersing = false, 1000); // Reset after fall
+    }
+    
+    const handleClick = () => {
+        mouse.active = false;
+        dispersing = true;
+        setTimeout(() => dispersing = false, 1000);
+    }
+    
+    canvas.addEventListener('mousemove', handleMouseMove)
+    canvas.addEventListener('mouseleave', handleMouseLeave)
+    canvas.addEventListener('click', handleClick)
+    
+    const animate = () => {
+        if (!ctx) return
+        ctx.clearRect(0, 0, w, h)
+        
+        // Spin speed increases with gathered particles
+        const speed = 0.02 + (gatheredCount * 0.001); // Slower spin
+        angle += speed;
+        gatheredCount = 0; // Reset count for this frame recalculation
+
+        // --- 1. DRAW MOUSE "CORE" (The Stick) ---
+        if (mouse.active && !dispersing) {
+            // Core Glow
+            const coreSize = 6; // Smaller core as requested
+            const gradient = ctx.createRadialGradient(mouse.x, mouse.y, 2, mouse.x, mouse.y, coreSize * 4);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+            gradient.addColorStop(0.4, 'rgba(56, 189, 248, 0.6)'); 
+            gradient.addColorStop(1, 'rgba(56, 189, 248, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(mouse.x, mouse.y, coreSize * 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Solid Center
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(mouse.x, mouse.y, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // --- 2. PARTICLE PHYSICS ---
+        particles.forEach((p, i) => {
+            // GRAVITY FALL (Dispersing)
+            if (dispersing) {
+                p.vy += 0.5; // Gravity
+                p.y += p.vy;
+                p.x += p.vx * 0.5;
+                
+                // Bounce floor slightly or reset top
+                if (p.y > h) {
+                    p.y = -10;
+                    p.vy = 0;
+                    p.x = Math.random() * w;
+                }
+            } 
+            // NORMAL ATTRACTION
+            else if (mouse.active) {
+                const dx = mouse.x - p.x;
+                const dy = mouse.y - p.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                
+                if (dist < 150) {
+                    // It's caught in the machine!
+                    gatheredCount++;
+                    
+                    // Orbit Calculation
+                    // Pull hard to center
+                    const pull = (dist - 10) * 0.02; // Reduced pull
+                    p.vx += (dx / dist) * pull * 0.5;
+                    p.vy += (dy / dist) * pull * 0.5;
+                    
+                    // Add strong rotation (Tangent force)
+                    // Cross product logic for 2D rotation
+                    p.vx += -dy * 0.02; // Reduced rotation force
+                    p.vy += dx * 0.02;
+                    
+                    // Dampen to keep stable orbit
+                    p.vx *= 0.85; // Less damping to keep them moving but controlled
+                    p.vy *= 0.85;
+                    
+                    p.x += p.vx;
+                    p.y += p.vy;
+                } else {
+                    // Drifting slowly towards mouse if far
+                    p.vx += (dx / dist) * 0.05; // Slower drift
+                    p.vy += (dy / dist) * 0.05;
+                    p.vx *= 0.95; p.vy *= 0.95;
+                    p.x += p.vx; p.y += p.vy;
+                }
+            } else {
+                // Idle floating
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0 || p.x > w) p.vx *= -1;
+                if (p.y < 0 || p.y > h) p.vy *= -1;
+            }
+            
+            // Draw Particle
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw Web Connections (The "Cotton Candy" strands)
+            if (mouse.active && !dispersing) {
+                const distToMouse = Math.sqrt(Math.pow(p.x - mouse.x, 2) + Math.pow(p.y - mouse.y, 2));
+                if (distToMouse < 80) {
+                     particles.slice(i + 1).forEach(p2 => {
+                        const d2 = Math.sqrt(Math.pow(p.x - p2.x, 2) + Math.pow(p.y - p2.y, 2));
+                        if (d2 < 40) {
+                            ctx.beginPath();
+                            ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 - d2/80})`; 
+                            ctx.lineWidth = 0.5;
+                            ctx.moveTo(p.x, p.y);
+                            ctx.lineTo(p2.x, p2.y);
+                            ctx.stroke();
+                        }
+                     });
+                     
+                     // Strand to Core
+                     ctx.beginPath();
+                     ctx.strokeStyle = `rgba(147, 197, 253, ${0.4 - distToMouse/200})`;
+                     ctx.lineWidth = 0.5;
+                     ctx.moveTo(p.x, p.y);
+                     ctx.lineTo(mouse.x, mouse.y);
+                     ctx.stroke();
+                }
+            }
+        })
+        requestAnimationFrame(animate)
+    }
+    
+    const animationId = requestAnimationFrame(animate)
+    
+    const resizeObserver = new ResizeObserver(() => {
+        if (!canvas.parentElement) return
+        w = canvas.width = canvas.parentElement.clientWidth
+        h = canvas.height = canvas.parentElement.clientHeight
+    })
+    resizeObserver.observe(canvas.parentElement!)
+
+    return () => { 
+        cancelAnimationFrame(animationId); 
+        canvas.removeEventListener('mousemove', handleMouseMove)
+        canvas.removeEventListener('mouseleave', handleMouseLeave)
+        canvas.removeEventListener('click', handleClick)
+        resizeObserver.disconnect()
+    }
+  }, [])
+
+  useEffect(() => {
+      const quotes = [
+          "El Oráculo está pensando...", 
+          "Los agentes están debatiendo...", 
+          "El Cronista escribe...", 
+          "El Visionario ilustra...", 
+          "Optimizando ventas...", 
+          "Analizando tendencias..."
+      ]
+      setQuote(quotes[Math.floor(Math.random() * quotes.length)])
+      const i = setInterval(() => setQuote(quotes[Math.floor(Math.random() * quotes.length)]), 5000)
+      
+      const update = () => {
+          const elapsed = Date.now() - new Date(book.createdAt).getTime()
+          const total = 15 * 60 * 1000 // 15 mins
+          const p = Math.min((elapsed / total) * 100, 99)
+          setProgress(p)
+          
+          const remaining = Math.max(0, total - elapsed)
+          const mins = Math.ceil(remaining / 60000)
+          setTimeLeft(`${mins} min restantes`)
+      }
+      
+      update(); 
+      const pI = setInterval(update, 1000)
+      
+      return () => { clearInterval(i); clearInterval(pI) }
+  }, [book.createdAt])
+
+  return (
+      <div className="absolute inset-0 z-20 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-between p-6 overflow-hidden animate-in fade-in duration-500">
+<canvas ref={canvasRef} className="absolute inset-0 w-full h-full cursor-none opacity-100 pointer-events-auto" />
+          
+          <div className="absolute top-2 right-2 z-50">
+             <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-slate-100/50 rounded-full"
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                title="Cancelar generación"
+             >
+                <Trash2 className="h-4 w-4" />
+             </Button>
+          </div>
+
+          <div className="relative z-10 w-full flex flex-col items-center mt-10">
+              <div className="relative mb-6"> 
+                <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-20 duration-1000"></div> 
+                <div className="relative p-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full shadow-2xl"> 
+                    <Loader2 className="h-10 w-10 text-white animate-spin" /> 
+                </div> 
+              </div>
+              <h3 className="font-bold text-xl text-slate-800 mb-2 animate-pulse">{timeLeft}</h3>
+              <p className="text-sm text-slate-500 font-medium text-center h-10 px-4">"{quote}"</p>
+          </div>
+          
+          <div className="relative z-10 w-full space-y-2 mb-4">
+               <div className="flex justify-between text-xs font-bold text-slate-600 uppercase tracking-wider"> 
+                    <span>Generando Obra Maestra</span> 
+                    <span>{Math.round(progress)}%</span> 
+               </div>
+               <Progress value={progress} className="h-3 w-full bg-slate-100 border border-slate-200" indicatorClassName="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+               <div className="text-[10px] text-center text-slate-400 pt-2"> Interactúa con las partículas ✨ </div>
+          </div>
+      </div>
+  )
+}
+
 export function DashboardClient({ books, user }: DashboardClientProps) {
   const router = useRouter()
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -39,6 +303,7 @@ export function DashboardClient({ books, user }: DashboardClientProps) {
   const [statusMessage, setStatusMessage] = useState('')
   const [language, setLanguage] = useState('es')
   const [topicSuggestion, setTopicSuggestion] = useState('')
+  const [coverStyle, setCoverStyle] = useState('modern_light')
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   
   // Countdown Timer Logic
@@ -94,7 +359,7 @@ export function DashboardClient({ books, user }: DashboardClientProps) {
       const response = await fetch('/api/autopilot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language, topicSuggestion })
+        body: JSON.stringify({ language, topicSuggestion, coverStyle })
       })
 
       if (!response.ok) {
@@ -141,10 +406,14 @@ export function DashboardClient({ books, user }: DashboardClientProps) {
                         router.push(`/books/${data.bookId}`)
                         break
                     } else if (data.type === 'error') {
+                        console.error('Autopilot Server Error:', data.message)
                         throw new Error(data.message)
                     }
-                } catch (e) {
-                    console.warn('JSON parse error (might be partial chunk):', e)
+                } catch (e: any) {
+                    // Ignore transient JSON parse errors from stream chunks
+                    if (e.message && e.message !== 'Unexpected end of JSON input') {
+                         console.warn('Stream parsing warning:', e.message)
+                    }
                 }
             }
         }
@@ -167,7 +436,7 @@ export function DashboardClient({ books, user }: DashboardClientProps) {
             <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               Nexbook-AI
             </span>
-            <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full font-semibold">v2.9.0</span>
+            <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full font-semibold">v7.0-ULTRA</span>
           </Link>
           <div className="flex items-center gap-4">
             <div 
@@ -205,20 +474,11 @@ export function DashboardClient({ books, user }: DashboardClientProps) {
             <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600 hidden sm:inline">{user?.name}</span>
                 <Link href="/settings">
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Configuración"
-                >
+                <Button variant="ghost" size="icon" title="Configuración">
                     <Settings className="h-5 w-5" />
                 </Button>
                 </Link>
-                <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => signOut({ callbackUrl: '/' })}
-                title="Cerrar sesión"
-                >
+                <Button variant="ghost" size="icon" onClick={() => signOut({ callbackUrl: '/' })} title="Cerrar sesión">
                 <LogOut className="h-5 w-5" />
                 </Button>
             </div>
@@ -336,6 +596,23 @@ export function DashboardClient({ books, user }: DashboardClientProps) {
                       />
                       <p className="text-xs text-emerald-700 mt-1">✨ Deja en blanco para análisis automático completo o especifica un tema de interés</p>
                    </div>
+                   
+                   {/* COVER STYLE SELECTOR */}
+                   <div className="w-full">
+                      <label className="block text-sm font-medium text-emerald-800 mb-1">🎨 Estilo de Portada</label>
+                      <select 
+                        value={coverStyle}
+                        onChange={(e) => setCoverStyle(e.target.value)}
+                        className="w-full px-4 py-2 bg-white border-2 border-emerald-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none font-medium text-emerald-900"
+                        disabled={autopilotLoading}
+                      >
+                        <option value="modern_light">Minimalista Moderno</option>
+                        <option value="technical">Técnico / Blueprint</option>
+                        <option value="cookbook">Gastronómico / Rustico</option>
+                        <option value="cinematic">Cinematográfico</option>
+                        <option value="fantasy">Fantasía / Mágico</option>
+                      </select>
+                   </div>
 
                    <Button
                       onClick={handleAutopilot}
@@ -409,23 +686,7 @@ export function DashboardClient({ books, user }: DashboardClientProps) {
                 className={`bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all overflow-hidden group relative ${book.status === 'generating' ? 'ring-2 ring-blue-400 cursor-not-allowed' : ''}`}
               >
                 {/* Generating Overlay */}
-                {book.status === 'generating' && (
-                  <div className="absolute inset-0 z-20 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
-                    <div className="relative mb-4">
-                      <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-20"></div>
-                      <div className="relative p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full shadow-xl">
-                        <Loader2 className="h-8 w-8 text-white animate-spin" />
-                      </div>
-                    </div>
-                    <h3 className="font-bold text-lg text-slate-800 mb-1">Generando Libro...</h3>
-                    <p className="text-sm text-slate-500 mb-4 px-4 text-justify">La IA está escribiendo los capítulos e ilustrando.</p>
-                    <div className="flex items-center gap-2 text-xs font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-                       <TrendingUp className="w-3 h-3" />
-                       <span>{book.chapters?.length || 0} capítulos listos</span>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-4 animate-pulse">Este proceso toma unos minutos. Puedes salir sin problema.</p>
-                  </div>
-                )}
+                {book.status === 'generating' && <GeneratingBookOverlay book={book} onDelete={() => handleDeleteBook(book.id)} />}
 
                 <Link href={book.status === 'generating' ? '#' : `/books/${book.id}`} className={book.status === 'generating' ? 'pointer-events-none' : ''}>
                   <div className="relative aspect-[3/4] bg-gray-200">
@@ -466,7 +727,7 @@ export function DashboardClient({ books, user }: DashboardClientProps) {
                       size="sm"
                       variant="destructive"
                       onClick={() => handleDeleteBook(book.id)}
-                      disabled={deleting === book.id || book.status === 'generating'}
+                      disabled={deleting === book.id}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

@@ -20,6 +20,8 @@ model User {
   providers     ProviderConfig[]
   accounts      Account[]
   sessions      Session[]
+  oracleDecisions OracleDecision[]
+  marketResearches MarketResearch[]
   
   // Tiered Access Fields
   planType         String    @default("free") // free, indie, pro
@@ -30,6 +32,8 @@ model User {
   // Profile Fields
   bio              String?
   website          String?
+  authorName       String?  // Name to appear on covers
+  coverStyle       String?  @default("minimal") // minimal, studio, office, etc.
   twitter          String?
   instagram        String?
   linkedin         String?
@@ -40,40 +44,106 @@ model User {
 }
 
 model Book {
-  id            String   @id @default(cuid())
-  userId        String
-  title         String
-  genre         String
-  description   String
+  id          String   @id @default(cuid())
+  userId      String
+  
+  // Contenido
+  title       String
+  subtitle    String?
+  description String 
+  category    String
+  
+  // Legacy support or mixed
+  genre         String?
+  seoKeywords   String?  // Comma separated keywords (Legacy/SEO mapping)
+  seoDescription String? // Meta description
   coverImageUrl String?
+  coverRegenCount Int      @default(0)
   status        String   @default("draft") // draft or completed
   wordCount     Int?     @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  chapters      Chapter[]
-  exportSettings ExportSettings?
-  integrations  MarketplaceIntegration[]
 
   // Visuals
   theme         String   @default("swiss_master")
   layout        String   @default("standard")
+  
+  // Generación v2
+  generationMode    String  @default("autopilot") // 'autopilot' | 'manual'
+  researchData      Json?   // Datos de investigación de Gemini
+  seoData           Json?   // Keywords, volumen, competencia
+  
+  // Proveedores usados
+  textProvider      String?  // 'deepseek' | 'openai'
+  imageProvider     String?  // 'banana_pro' | 'dalle3'
+  correctionProvider String @default("openai")
+  grammarProvider    String @default("gemini")
+  humanizationProvider String @default("chatgpt")
+  
+  // Quality metrics
+  qualityScore      Float?
+  readabilityScore  Float?
+  seoScore          Float?
+  
+  // Assets
+  covers            Json?    // URLs de las 5 variantes
+  mockups           Json?    // URLs de mockups
+  copywriting       Json?    // Textos de marketing
+  
+  // Distribution
+  platformMetadata  Json?    // Metadata por plataforma
+  publishedPlatforms Json? // ['amazon', 'apple', ...]
+  
+  // Financiero
+  estimatedCost     Float?
+  actualCost        Float?
+  generationTime    Int?     // segundos
+  
+  chapters  Chapter[]
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Relations preserved from previous schema
+  exportSettings ExportSettings?
+  integrations  MarketplaceIntegration[]
+  oracleDecisions OracleDecision[]
 
-  @@index([userId])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  
+  @@index([userId, generationMode])
+  @@index([category])
   @@map("books")
 }
 
 model Chapter {
-  id            String   @id @default(cuid())
-  bookId        String
-  chapterNumber Int
-  title         String
-  content       String
+  id          String   @id @default(cuid())
+  bookId      String
+  number      Int
+  title       String
+  content     String 
+  
+  // Legacy / Basic support
   imageUrl      String?
-  createdAt     DateTime @default(now())
-  book          Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  imageRegenCount Int    @default(0)
 
-  @@index([bookId])
+  // Imágenes v2
+  images      Json?     // Array de URLs de imágenes del capítulo
+  imagePrompts Json?    // Prompts usados
+  imageTypes  Json? // ['food', 'lifestyle', 'diagram']
+  imageProvider String? // Provider usado para ESTE capítulo
+  
+  // Quality tracking
+  rawContent       String? 
+  correctedContent String? 
+  grammarChecked   Boolean  @default(false)
+  humanized        Boolean  @default(false)
+  
+  // SEO
+  seoKeywords Json?
+  
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([bookId, number])
   @@map("chapters")
 }
 
@@ -154,4 +224,69 @@ model MarketplaceIntegration {
   book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
 
   @@unique([bookId, platform])
+}
+
+model OracleDecision {
+  id              String   @id @default(cuid())
+  userId          String
+  bookId          String?
+  
+  // Decisión
+  phase           String   // 'research' | 'generation' | 'quality' | 'assets'
+  task            String   // 'text' | 'image' | 'cover' | 'mockup' | etc
+  selectedProvider String
+  reason          String 
+  
+  // Context
+  inputData       Json
+  outputData      Json?
+  
+  // Performance
+  responseTime    Int      // ms
+  success         Boolean
+  errorMessage    String? 
+  
+  // Cost
+  estimatedCost   Float
+  actualCost      Float?
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book      Book?    @relation(fields: [bookId], references: [id], onDelete: SetNull)
+
+  timestamp DateTime @default(now())
+  
+  @@index([userId, phase])
+  @@index([bookId])
+  @@index([timestamp])
+  @@map("oracle_decisions")
+}
+
+model MarketResearch {
+  id              String   @id @default(cuid())
+  userId          String
+  
+  // Research data
+  query           String
+  niche           String
+  keywords        Json?
+  searchVolume    Int
+  competition     String   // 'low' | 'medium' | 'high'
+  trendScore      Float
+  
+  // Analysis
+  monetizationPotential Float
+  recommendedAction String
+  confidence        Float
+  
+  // Source
+  provider        String   @default("gemini")
+  rawData         Json
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  timestamp DateTime @default(now())
+  
+  @@index([userId])
+  @@index([niche])
+  @@map("market_research")
 }

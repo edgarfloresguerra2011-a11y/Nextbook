@@ -28,7 +28,7 @@ export default async function BookPage({ params }: PageProps) {
     },
     include: {
       chapters: {
-        orderBy: { chapterNumber: 'asc' },
+        orderBy: { number: 'asc' },
       },
     },
   }) as any

@@ -20,7 +20,7 @@ export default async function DashboardPage() {
     orderBy: { createdAt: 'desc' },
     include: {
       chapters: {
-        orderBy: { chapterNumber: 'asc' },
+        orderBy: { number: 'asc' },
       },
     },
   })

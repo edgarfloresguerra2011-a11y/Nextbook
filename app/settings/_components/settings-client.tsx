@@ -70,9 +70,14 @@ interface Provider {
 interface SettingsClientProps {
   providers: Provider[]
   user?: any
+  systemProviders?: Record<string, boolean>
 }
 
-export default function SettingsClient({ providers: initialProviders, user }: SettingsClientProps) {
+export default function SettingsClient({ 
+  providers: initialProviders, 
+  user, 
+  systemProviders = {} 
+}: SettingsClientProps) {
   const router = useRouter()
   const [providers, setProviders] = useState(initialProviders)
   const [selectedCategory, setSelectedCategory] = useState('text_generation')
@@ -93,6 +98,8 @@ export default function SettingsClient({ providers: initialProviders, user }: Se
   // Profile State
   const [profileData, setProfileData] = useState({
     name: user?.name || '',
+    authorName: user?.authorName || '',
+    coverStyle: user?.coverStyle || 'modern_light',
     bio: user?.bio || '',
     website: user?.website || '',
     twitter: user?.twitter || '',
@@ -398,7 +405,7 @@ export default function SettingsClient({ providers: initialProviders, user }: Se
             <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               Nexbook-AI
             </span>
-            <Badge variant="secondary" className="ml-2 bg-purple-100 text-purple-700">v2.9.0</Badge>
+            <Badge variant="secondary" className="ml-2 bg-purple-100 text-purple-700">v3.0.0-PRO</Badge>
           </Link>
         </div>
       </header>
@@ -480,6 +487,14 @@ export default function SettingsClient({ providers: initialProviders, user }: Se
                                     value={profileData.name} 
                                     onChange={(e) => setProfileData({...profileData, name: e.target.value})} 
                                     placeholder="Tu nombre" 
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Nombre de Autor (para portadas)</Label>
+                            <Input 
+                                    value={profileData.authorName || ''} 
+                                    onChange={(e) => setProfileData({...profileData, authorName: e.target.value})} 
+                                    placeholder="Ej: J.K. Rowling" 
                             />
                         </div>
                         <div className="space-y-2">
@@ -565,13 +580,28 @@ export default function SettingsClient({ providers: initialProviders, user }: Se
                <LanguageSwitcher />
                
                <div className="flex flex-col gap-2">
-                  <Label className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    Tema <Badge variant="outline" className="text-[10px] ml-2">Próximamente</Badge>
+                   <Label className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    Estilo de Fondo de Portada
                   </Label>
-                   <Select disabled>
-                    <SelectTrigger className="w-full bg-muted/50">
-                      <SelectValue placeholder="Automático (Sistema)" />
+                   <Select 
+                      value={profileData.coverStyle || 'modern_light'} 
+                      onValueChange={(val) => setProfileData({...profileData, coverStyle: val})}
+                   >
+                    <SelectTrigger className="w-full bg-white dark:bg-slate-950">
+                      <SelectValue placeholder="Selecciona un fondo" />
                     </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="modern_light">Moderno Claro (Genérico)</SelectItem>
+                      <SelectItem value="studio_white">Estudio Fotográfico Blanco</SelectItem>
+                      <SelectItem value="minimal_grey">Minimalista Gris Suave</SelectItem>
+                      <SelectItem value="wooden_table">Mesa de Madera Clara</SelectItem>
+                      <SelectItem value="soft_gradient">Gradiente Pastel Suave</SelectItem>
+                      <SelectItem value="geometric_abstract">Abstracto Geométrico Claro</SelectItem>
+                      <SelectItem value="natural_light">Luz Natural de Ventana</SelectItem>
+                      <SelectItem value="clean_tech">Tech Limpio (Blanco/Azul)</SelectItem>
+                      <SelectItem value="coffee_shop_blur">Cafetería Borrosa (Bokeh)</SelectItem>
+                      <SelectItem value="marble_surface">Superficie de Mármol</SelectItem>
+                    </SelectContent>
                   </Select>
                </div>
             </CardContent>
@@ -584,6 +614,36 @@ export default function SettingsClient({ providers: initialProviders, user }: Se
             setSelectedCategory(val)
             setSearchQuery('') // Clear search on category switching to avoid confusion
         }} className="space-y-6">
+          {/* Master Providers from ENV */}
+          <div className="mb-8 overflow-hidden rounded-xl border bg-gradient-to-br from-blue-50 to-indigo-50 p-6 dark:from-blue-950/20 dark:to-indigo-950/20">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-blue-900 dark:text-blue-100 flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-blue-600" />
+                  Master Providers (Secrets)
+                </h3>
+                <p className="text-sm text-blue-700/80 dark:text-blue-300/80">
+                  Proveedores detectados automáticamente en tus secretos (.env / Firebase).
+                </p>
+              </div>
+              <Badge className="bg-blue-600">Sistema Activo</Badge>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {Object.entries(systemProviders).map(([provider, isActive]) => isActive && (
+                <div key={provider} className="flex items-center gap-2 p-3 bg-white/50 dark:bg-white/5 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span className="text-sm font-semibold capitalize">{provider}</span>
+                </div>
+              ))}
+              {!Object.values(systemProviders).some(v => v) && (
+                <p className="col-span-full text-sm text-muted-foreground italic text-center py-2">
+                  No se detectaron secretos en el entorno.
+                </p>
+              )}
+            </div>
+          </div>
+
           <TabsList className="grid w-full grid-cols-5 h-auto p-1 bg-white dark:bg-gray-800 shadow-md">
             {CATEGORIES.map(cat => (
               <TabsTrigger
@@ -600,52 +660,6 @@ export default function SettingsClient({ providers: initialProviders, user }: Se
           {/* Contenido de cada categoría */}
           {CATEGORIES.map(cat => (
             <TabsContent key={cat.id} value={cat.id} className="space-y-6">
-              {/* Barra de búsqueda y filtros */}
-              <Card className="shadow-md">
-                <CardHeader>
-                  <CardTitle className="text-xl">Buscar y Filtrar Proveedores</CardTitle>
-                  <CardDescription>
-                    Encuentra el proveedor perfecto por nombre, modelo, precio o características
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Búsqueda */}
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar por nombre, modelo, precio (ej: 'free', 'gpt', 'imagen')..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 py-6 text-base"
-                    />
-                  </div>
-
-                  {/* Tags de filtrado */}
-                  {availableTags.length > 0 && (
-                    <div className="space-y-2">
-                      <Label className="text-sm text-muted-foreground">Filtrar por características:</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {availableTags.map(tag => (
-                          <Badge
-                            key={tag}
-                            variant={selectedTags.includes(tag) ? 'default' : 'outline'}
-                            className="cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900 transition-colors"
-                            onClick={() => toggleTag(tag)}
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Contador de resultados */}
-                  <div className="text-sm text-muted-foreground">
-                    Mostrando {filteredProviders.length} de {AI_PROVIDERS.filter(p => p.categories.includes(selectedCategory)).length} proveedores
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Proveedores configurados */}
               {categoryProviders.length > 0 && (
                 <Card className="shadow-md border-2 border-green-200 dark:border-green-800">
@@ -655,7 +669,7 @@ export default function SettingsClient({ providers: initialProviders, user }: Se
                       <CardTitle>Proveedores Configurados</CardTitle>
                     </div>
                     <CardDescription>
-                      Gestiona tus proveedores activos con sistema de fallback por prioridad
+                      Gestiona tus proveedores activos con sistema de fallback por prioridad. Los proveedores configurados en tus archivos de entorno (.env o secrets de Firebase) se añaden automáticamente al flujo.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -726,32 +740,11 @@ export default function SettingsClient({ providers: initialProviders, user }: Se
 
               {/* Lista de proveedores disponibles */}
               <div className="space-y-4">
-                {filteredProviders.length === 0 ? (
-                  <Card className="shadow-md">
-                    <CardContent className="py-12 text-center">
-                      <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <p className="text-lg text-muted-foreground">
-                        No se encontraron proveedores con esos criterios
-                      </p>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setSearchQuery('')
-                          setSelectedTags([])
-                        }}
-                        className="mt-4"
-                      >
-                        Limpiar filtros
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  filteredProviders.map(provider => {
+                  {AI_PROVIDERS.filter(p => p.categories.includes(selectedCategory)).map(provider => {
                     const currentConfig = providers.find(p => 
                       p.provider === provider.id && p.category === selectedCategory
                     );
                     
-                    // Fallback: Check if this provider is configured in ANY other category
                     const globalConfig = providers.find(p => p.provider === provider.id && p.apiKey);
 
                     return (
@@ -760,14 +753,11 @@ export default function SettingsClient({ providers: initialProviders, user }: Se
                         provider={provider}
                         isExpanded={expandedProviders[provider.id] || false}
                         onToggleExpand={() => toggleProviderExpansion(provider.id)}
-                        onSelectModel={(modelId) => {
-                          // Handled internally in ProviderCard now
-                        }}
+                        onSelectModel={(modelId) => {}}
                         isConfigured={!!currentConfig}
                         currentConfig={currentConfig}
                         globalConfig={globalConfig}
                         onSave={async (key, modelId) => {
-                          // Inline save logic reuse
                           try {
                             const response = await fetch('/api/providers', {
                               method: 'POST',
@@ -782,7 +772,6 @@ export default function SettingsClient({ providers: initialProviders, user }: Se
                             })
                             if (!response.ok) throw new Error('Error al guardar')
                             const newProvider = await response.json()
-                            // Update local state
                             const exists = providers.some(p => p.id === newProvider.id)
                             if (exists) {
                                setProviders(providers.map(p => p.id === newProvider.id ? newProvider : p))
@@ -796,8 +785,7 @@ export default function SettingsClient({ providers: initialProviders, user }: Se
                         }}
                       />
                     )
-                  })
-                )}
+                  })}
               </div>
 
               {/* Formulario para agregar proveedor */}

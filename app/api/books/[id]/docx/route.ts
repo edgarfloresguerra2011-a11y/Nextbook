@@ -33,7 +33,7 @@ export async function POST(
       where: { id: bookId },
       include: {
         chapters: {
-          orderBy: { chapterNumber: 'asc' },
+          orderBy: { number: 'asc' },
         },
       },
     })
@@ -81,7 +81,7 @@ export async function POST(
     book.chapters.forEach((chapter: any) => {
       children.push(
         new Paragraph({
-          text: `Chapter ${chapter.chapterNumber}: ${chapter.title}`,
+          text: `Chapter ${chapter.number}: ${chapter.title}`,
           spacing: { after: 100 },
         })
       )
@@ -99,7 +99,7 @@ export async function POST(
       // Chapter title
       children.push(
         new Paragraph({
-          text: `Chapter ${chapter.chapterNumber}: ${chapter.title}`,
+          text: `Chapter ${chapter.number}: ${chapter.title}`,
           heading: HeadingLevel.HEADING_1,
           spacing: { before: 400, after: 200 },
         })

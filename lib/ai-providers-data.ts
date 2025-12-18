@@ -118,6 +118,7 @@ export const AI_PROVIDERS: AIProvider[] = [
     categories: ['text_generation', 'image_generation', 'grammar', 'humanization'],
     tags: ['agregador', 'código-abierto', 'flexible', 'pago-por-uso'],
     models: [
+      { id: 'tencent/hunyuandit', name: 'HunyuanDiT (Tencent)', pricing: '$0.04 por imagen', tags: ['imagen', 'asiático', 'nuevo'] },
       { id: 'meta/llama-2-70b-chat', name: 'Llama 2 70B Chat', pricing: '$0.65/$2.75 por 1M tokens', tags: ['potente'] },
       { id: 'mistralai/mixtral-8x7b-instruct-v0.1', name: 'Mixtral 8x7B Instruct', pricing: '$0.30/$1.00 por 1M tokens', tags: ['económico'] },
       { id: 'stability-ai/sdxl', name: 'Stable Diffusion XL', pricing: '$0.0035 por imagen', tags: ['imagen'] },
@@ -250,14 +251,58 @@ export const AI_PROVIDERS: AIProvider[] = [
   {
     id: 'deepseek',
     name: 'DeepSeek',
-    description: 'Modelos chinos económicos especializados en código y razonamiento matemático',
+    description: 'La IA china más potente y económica (V3/R1). Especializada en código y razonamiento.',
     apiKeyUrl: 'https://platform.deepseek.com/api_keys',
     docsUrl: 'https://platform.deepseek.com/docs',
     categories: ['text_generation', 'grammar', 'humanization'],
     tags: ['económico', 'coding', 'matemáticas', 'chino'],
     models: [
-      { id: 'deepseek-chat', name: 'DeepSeek Chat', contextWindow: 64000, pricing: '$0.14/$0.28 por 1M tokens', tags: ['económico', 'chat'] },
-      { id: 'deepseek-coder', name: 'DeepSeek Coder', contextWindow: 16000, pricing: '$0.14/$0.28 por 1M tokens', tags: ['económico', 'coding'] },
+      { id: 'deepseek-chat', name: 'DeepSeek V3 (Chat)', contextWindow: 64000, pricing: '$0.27/$1.10 por 1M (Cache: $0.07)', tags: ['económico', 'sota', 'v3'] },
+      { id: 'deepseek-reasoner', name: 'DeepSeek R1 (Reasoner)', contextWindow: 64000, pricing: '$0.55/$2.19 por 1M', tags: ['razonamiento', 'chain-of-thought'] },
+    ]
+  },
+
+  {
+    id: 'qwen',
+    name: 'Alibaba Cloud (Qwen)',
+    description: 'Modelos Qwen líderes en benchmarks. Muy económicos y potentes.',
+    apiKeyUrl: 'https://bailian.console.aliyun.com/',
+    docsUrl: 'https://help.aliyun.com/document_detail/2712569.html?spm=a2c4g.2712569.0.0.5f9556350L400S',
+    categories: ['text_generation', 'grammar', 'humanization'],
+    tags: ['económico', 'potente', 'chino', 'multilingüe'],
+    models: [
+      { id: 'qwen-max', name: 'Qwen-Max', contextWindow: 30000, pricing: '$0.005/$0.02 (aprox)', tags: ['premium', 'sota'] },
+      { id: 'qwen-plus', name: 'Qwen-Plus', contextWindow: 128000, pricing: 'Muy bajo', tags: ['balanceado', 'economy'] },
+      { id: 'qwen-turbo', name: 'Qwen-Turbo', contextWindow: 128000, pricing: 'Ultra bajo', tags: ['rápido', 'economy'] },
+    ]
+  },
+
+  {
+    id: 'zhipu',
+    name: 'Zhipu AI (GLM)',
+    description: 'Creadores de ChatGLM. Excelente rendimiento en español y contextos largos.',
+    apiKeyUrl: 'https://open.bigmodel.cn/usercenter/apikeys',
+    docsUrl: 'https://open.bigmodel.cn/dev/howuse/introduction',
+    categories: ['text_generation', 'humanization'],
+    tags: ['económico', 'bilingüe', 'chino'],
+    models: [
+      { id: 'glm-4', name: 'GLM-4', contextWindow: 128000, pricing: '$14/$14 por 1M (aprox)', tags: ['premium'] },
+      { id: 'glm-4-flash', name: 'GLM-4 Flash', contextWindow: 128000, pricing: 'Gratis/Muy bajo', tags: ['gratis', 'rápido'] },
+      { id: 'glm-4-air', name: 'GLM-4 Air', contextWindow: 128000, pricing: 'Económico', tags: ['balanceado'] },
+    ]
+  },
+
+  {
+    id: 'yi',
+    name: '01.AI (Yi)',
+    description: 'Modelos Yi con ventana de contexto de 200k. Excelente calidad literaria.',
+    apiKeyUrl: 'https://platform.01.ai/',
+    docsUrl: 'https://platform.01.ai/docs',
+    categories: ['text_generation'],
+    tags: ['largo-contexto', 'narrativo'],
+    models: [
+      { id: 'yi-large', name: 'Yi-Large', contextWindow: 32000, pricing: '$3/$3 por 1M', tags: ['calidad', 'premium'] },
+      { id: 'yi-medium', name: 'Yi-Medium', contextWindow: 16000, pricing: 'Económico', tags: ['balanceado'] },
     ]
   },
 

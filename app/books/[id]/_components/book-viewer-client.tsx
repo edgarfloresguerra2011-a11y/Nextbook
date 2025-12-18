@@ -13,7 +13,7 @@ import { UpgradeModal } from '@/components/upgrade-modal'
 // --- Interfaces ---
 type Chapter = {
   id: string
-  chapterNumber: number
+  number: number
   title: string
   content: string
   imageUrl?: string | null
@@ -161,6 +161,7 @@ export function BookViewerClient({ book, planType = 'free' }: BookViewerClientPr
   const [showLayoutMenu, setShowLayoutMenu] = useState(false)
   const [showCoverModal, setShowCoverModal] = useState(false)
   const [currentCoverUrl, setCurrentCoverUrl] = useState(book.coverImageUrl)
+  const [selectedCoverStyle, setSelectedCoverStyle] = useState('modern_light')
   const [isSaving, setIsSaving] = useState(false)
 
   // Sync state if prop changes
@@ -202,47 +203,63 @@ export function BookViewerClient({ book, planType = 'free' }: BookViewerClientPr
       }
   }
 
-  const handleRegenerateCover = async () => {
-     setIsRegeneratingCover(true)
-     try {
-         const res = await fetch(`/api/books/${book.id}/regenerate-cover`, { 
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'regenerate' }) 
-            })
-         
-         let data;
-         try { data = await res.json() } catch (err) { throw new Error(`Server Error: ${res.status}`) }
+   // State for cover regen count (initialized from props or 0)
+   const [coverRegenCount, setCoverRegenCount] = useState((book.coverRegenCount as number) || 0);
 
-          if (data.imageUrl) {
-              setCurrentCoverUrl(data.imageUrl)
-              toast.success("Portada regenerada con éxito", { description: `Via ${data.provider}` })
-          } else if (data.error) {
-              console.error("[Cover Gen Error]:", data.details);
-              const detailsStr = data.details ? data.details.join('\n') : '';
-              
-              // Smart User Message based on error type
-              let userMsg = data.error;
-              if (detailsStr.includes('429') || detailsStr.includes('quota')) {
-                  userMsg = "Límite de cuota alcanzado. Espera unos minutos e intenta de nuevo.";
-              } else if (detailsStr.includes('402') || detailsStr.includes('billing_hard_limit')) {
-                  userMsg = "Tus llaves de AI (OpenAI/Replicate) no tienen saldo.";
-              } else if (detailsStr.includes('No image')) {
-                  userMsg = "El modelo no generó imagen. Intenta con otro prompt o espera unos minutos.";
-              }
-
-              toast.error("Error al generar portada", { 
-                  description: userMsg,
-                  duration: 8000
-              })
-         }
-     } catch (error: any) {
-          console.error("❌ [CLIENT] Regenerate Cover Error:", error);
-          toast.error("Error de conexión", { description: error.message });
-      } finally {
-          setIsRegeneratingCover(false)
+   const handleRegenerateCover = async () => {
+      // Client-side quick check
+      if (coverRegenCount >= 3) {
+          toast.error("Límite alcanzado", { description: "Máximo 3 regeneraciones permitidas para la portada." });
+          return;
       }
-  }
+
+      setIsRegeneratingCover(true)
+      try {
+          const res = await fetch(`/api/books/${book.id}/regenerate-cover`, { 
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ action: 'regenerate', style: selectedCoverStyle }) 
+             })
+          
+          let data;
+          try { data = await res.json() } catch (err) { throw new Error(`Server Error: ${res.status}`) }
+   
+           if (data.imageUrl) {
+               setCurrentCoverUrl(data.imageUrl)
+               setCoverRegenCount(prev => prev + 1);
+               toast.success("Portada regenerada con éxito", { description: `Via ${data.provider}` })
+           } else if (data.error) {
+               if (data.limitReached) setCoverRegenCount(3);
+
+               console.error("[Cover Gen Error]:", data.details);
+               const detailsStr = data.details ? data.details.join('\n') : '';
+               
+               // Smart User Message based on error type
+               let userMsg = data.error;
+               if (detailsStr.includes('429') || detailsStr.includes('quota')) {
+                   userMsg = "Límite de cuota alcanzado. Espera unos minutos e intenta de nuevo.";
+               } else if (detailsStr.includes('402') || detailsStr.includes('billing_hard_limit')) {
+                   userMsg = "Tus llaves de AI (OpenAI/Replicate) no tienen saldo.";
+               } else if (detailsStr.includes('No image')) {
+                   userMsg = "El modelo no generó imagen. Intenta con otro prompt o espera unos minutos.";
+               }
+   
+               toast.error("Error al generar portada", { 
+                   description: userMsg,
+                   duration: 8000,
+                   action: userMsg.includes('Vertex AI') ? {
+                       label: 'Abrir Consola',
+                       onClick: () => window.open(data.details[1], '_blank')
+                   } : undefined
+               })
+          }
+      } catch (error: any) {
+           console.error("❌ [CLIENT] Regenerate Cover Error:", error);
+           toast.error("Error de conexión", { description: error.message });
+       } finally {
+           setIsRegeneratingCover(false)
+       }
+   }
 
   // Group themes by category with Premium first
   const themesByCategory = Object.entries(BOOK_THEMES).reduce((acc, [key, theme]) => {
@@ -430,16 +447,37 @@ export function BookViewerClient({ book, planType = 'free' }: BookViewerClientPr
                          )}
                     </div>
 
+                    <div className="mt-4 w-full max-w-xs">
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block text-center">Estilo de Fondo</label>
+                        <Select value={selectedCoverStyle} onValueChange={setSelectedCoverStyle}>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Selecciona un fondo" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[200]">
+                                <SelectItem value="modern_light">Moderno Claro (Genérico)</SelectItem>
+                                <SelectItem value="studio_white">Estudio Fotográfico Blanco</SelectItem>
+                                <SelectItem value="minimal_grey">Minimalista Gris Suave</SelectItem>
+                                <SelectItem value="wooden_table">Mesa de Madera Clara</SelectItem>
+                                <SelectItem value="soft_gradient">Gradiente Pastel Suave</SelectItem>
+                                <SelectItem value="geometric_abstract">Abstracto Geométrico Claro</SelectItem>
+                                <SelectItem value="natural_light">Luz Natural de Ventana</SelectItem>
+                                <SelectItem value="clean_tech">Tech Limpio (Blanco/Azul)</SelectItem>
+                                <SelectItem value="coffee_shop_blur">Cafetería Borrosa (Bokeh)</SelectItem>
+                                <SelectItem value="marble_surface">Superficie de Mármol</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
                     <div className="mt-6 flex gap-4 w-full justify-center">
                         <Button 
                             variant="secondary"
                             size="lg"
                             onClick={handleRegenerateCover} 
-                            disabled={isRegeneratingCover} 
+                            disabled={isRegeneratingCover || coverRegenCount >= 3} 
                             className="bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-200 shadow-sm min-w-[160px]"
                         >
                             <Sparkles className={`mr-2 h-4 w-4 ${isRegeneratingCover ? 'animate-spin' : ''}`} />
-                            {isRegeneratingCover ? 'Generando...' : 'Re-Generar'}
+                            {isRegeneratingCover ? 'Generando...' : (coverRegenCount >= 3 ? 'Límite (3/3)' : `Re-Generar (${coverRegenCount}/3)`)}
                         </Button>
 
                         <Button 
@@ -624,8 +662,15 @@ function ChapterRenderer({ chapter, theme, layoutMode, regeneratingImageId, setR
 
     const [currentImageUrl, setCurrentImageUrl] = useState(chapter.imageUrl)
     const [selectedStyle, setSelectedStyle] = useState('cinematic');
+    const [regenCount, setRegenCount] = useState(chapter.imageRegenCount || 0);
 
     const handleRegenerateImage = async () => {
+         // Client-side quick check
+         if (regenCount >= 3) {
+             toast.error("Límite alcanzado", { description: "Máximo 3 regeneraciones permitidas." });
+             return;
+         }
+
          setRegeneratingImageId(chapter.id)
          try {
             const res = await fetch(`/api/chapters/${chapter.id}/regenerate-image`, { 
@@ -644,8 +689,12 @@ function ChapterRenderer({ chapter, theme, layoutMode, regeneratingImageId, setR
 
             if (data.imageUrl) { 
                 setCurrentImageUrl(data.imageUrl); 
+                setRegenCount(prev => prev + 1); // Client increment
                 toast.success("Imagen regenerada", { description: `Via ${data.provider}` }) 
             } else if (data.error) {
+                if (data.limitReached) {
+                    setRegenCount(3); // Force update limit
+                }
                 console.error("[Regen Error Details]:", data.details);
                 // Join details for the toast, or just show the first few
                 const detailsStr = data.details ? data.details.join('\n') : '';
@@ -682,7 +731,7 @@ function ChapterRenderer({ chapter, theme, layoutMode, regeneratingImageId, setR
                    <div className={`${theme.headerBg} px-8 py-8 flex flex-col items-start border-b ${theme.chapterBorder}`}>
                       <div className={`text-[10px] uppercase tracking-[0.2em] ${theme.accentColor} font-bold mb-3 opacity-60 flex items-center gap-2`}>
                           <span className="w-8 h-px bg-current"></span>
-                          Capítulo {chapter.chapterNumber}
+                          Capítulo {chapter.number}
                       </div>
                       <h2 className={`text-4xl md:text-5xl ${theme.font} font-bold ${theme.headerText} tracking-tight leading-[1] w-full`}>{chapter.title}</h2>
                    </div>
@@ -690,7 +739,7 @@ function ChapterRenderer({ chapter, theme, layoutMode, regeneratingImageId, setR
                
                {isCards && (
                    <div className={`${theme.headerBg} px-6 py-4 border-b ${theme.chapterBorder}`}>
-                       <h2 className={`text-lg font-bold ${theme.headerText} truncate`}>{chapter.chapterNumber}. {chapter.title}</h2>
+                       <h2 className={`text-lg font-bold ${theme.headerText} truncate`}>{chapter.number}. {chapter.title}</h2>
                    </div>
                )}
 
@@ -726,9 +775,16 @@ function ChapterRenderer({ chapter, theme, layoutMode, regeneratingImageId, setR
                            ))}
                        </div>
 
-                       <Button variant="secondary" onClick={handleRegenerateImage} disabled={regeneratingImageId === chapter.id} className="shadow-2xl h-9 px-6 font-bold tracking-wide">
+                       <Button 
+                          variant="secondary" 
+                          onClick={handleRegenerateImage} 
+                          disabled={regeneratingImageId === chapter.id || regenCount >= 3} 
+                          className="shadow-2xl h-9 px-6 font-bold tracking-wide"
+                       >
                           <RefreshCw className={`mr-2 h-4 w-4 ${regeneratingImageId === chapter.id ? 'animate-spin' : ''}`}/> 
-                          {regeneratingImageId === chapter.id ? 'Creando Arte...' : 'Regenerar Arte'}
+                          {regeneratingImageId === chapter.id 
+                            ? 'Creando Arte...' 
+                            : (regenCount >= 3 ? 'Límite (3/3) Pasado' : `Regenerar Arte (${regenCount}/3)`)}
                        </Button>
                   </div>
                 </div>

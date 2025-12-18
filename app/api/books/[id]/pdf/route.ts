@@ -54,7 +54,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       },
       include: {
         chapters: {
-          orderBy: { chapterNumber: 'asc' },
+          orderBy: { number: 'asc' },
         },
       },
     })
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     yPosition = 50
     for (const chapter of book?.chapters || []) {
       doc.text(
-        `Chapter ${chapter?.chapterNumber}: ${chapter?.title || ''}`,
+        `Chapter ${chapter?.number}: ${chapter?.title || ''}`,
         margin,
         yPosition
       )
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       // Chapter title
       doc.setFontSize(20)
       doc.setFont('helvetica', 'bold')
-      const chapterTitle = `Chapter ${chapter?.chapterNumber}: ${chapter?.title || ''}`
+      const chapterTitle = `Chapter ${chapter?.number}: ${chapter?.title || ''}`
       doc.text(chapterTitle, margin, yPosition)
       yPosition += 15
 

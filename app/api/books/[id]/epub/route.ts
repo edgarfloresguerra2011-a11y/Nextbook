@@ -32,7 +32,7 @@ export async function GET(
       where: { id: bookId },
       include: {
         chapters: {
-          orderBy: { chapterNumber: 'asc' },
+          orderBy: { number: 'asc' },
         },
       },
     })
@@ -41,23 +41,31 @@ export async function GET(
       return NextResponse.json({ message: 'Book not found' }, { status: 404 })
     }
 
-    // Prepare EPUB content
+    // Prepare EPUB content (Phase 4: KDP-Ready HTML)
     const content = book.chapters.map((chapter: any) => {
-      let html = `<h1>Chapter ${chapter.chapterNumber}: ${chapter.title}</h1>`
+      // KDP Styling: Simple semantic HTML. No complex inline styles.
+      let html = `<div class="chapter-container">`
+      html += `<h1 class="chapter-title">${chapter.title}</h1>`
       
       // Add chapter illustration if available
       if (chapter.imageUrl) {
-        html += `<img src="${chapter.imageUrl}" alt="Chapter illustration" style="max-width: 100%; height: auto; margin: 20px 0;" />`
+        html += `<div class="chapter-image-wrapper" style="text-align: center; margin: 2rem 0;">`
+        html += `<img src="${chapter.imageUrl}" alt="${chapter.title}" style="max-width: 100%; height: auto;" />`
+        html += `</div>`
       }
       
-      // Add chapter content
+      // Add chapter content - Ensure paragraphs are properly wrapped
       const paragraphs = chapter.content.split('\n').filter((p: string) => p.trim())
       paragraphs.forEach((paragraph: string) => {
-        html += `<p>${paragraph}</p>`
+        // Remove manual markdown artifacts if any slipped through
+        const cleanText = paragraph.replace(/^#+\s*/, '').replace(/\*\*/g, ''); 
+        html += `<p class="chapter-text">${cleanText}</p>`
       })
       
+      html += `</div>`
+      
       return {
-        title: `Chapter ${chapter.chapterNumber}: ${chapter.title}`,
+        title: chapter.title, // Table of Contents Label
         data: html,
       }
     })
@@ -65,13 +73,16 @@ export async function GET(
     // Dynamic import to avoid TypeScript errors
     const Epub = (await import('epub-gen-memory')).default
 
-    // EPUB options
+    // EPUB options (Using Marketing Data)
     const options = {
-      title: book.title,
-      author: 'Nexbook-AI',
-      publisher: 'Nexbook-AI',
-      description: book.description,
+      title: book.title, // Optimized SEO Title
+      author: user.authorName || 'NexBook AI Author', // User's Pen Name
+      publisher: 'NexBook AI Publishing', // Or user defined
+      description: book.description, // The "Sales Synopsis" from Marketing Agent
       cover: book.coverImageUrl || undefined,
+      tocTitle: 'Índice de Contenido',
+      ignoreFailedDownloads: true, // Prevent crash if image url is 404
+      verbose: true,
       content,
     }
 

@@ -11,7 +11,7 @@ export async function PATCH(req: Request) {
     }
 
     const body = await req.json()
-    const { name, bio, website, twitter, instagram, linkedin, image, facebook, tiktok } = body
+    const { name, authorName, bio, website, twitter, instagram, linkedin, image, facebook, tiktok, coverStyle } = body
     const userId = (session.user as any).id
     
     // Update user
@@ -19,6 +19,8 @@ export async function PATCH(req: Request) {
         where: { id: userId },
         data: {
             ...(name && { name }),
+            ...(authorName && { authorName }),
+            ...(coverStyle && { coverStyle }),
             ...(bio && { bio }),
             ...(website && { website }),
             ...(twitter && { twitter }),
@@ -49,6 +51,8 @@ export async function GET(req: Request) {
             where: { id: userId },
             select: {
                 name: true,
+                authorName: true,
+                coverStyle: true,
                 email: true,
                 image: true,
                 bio: true,
